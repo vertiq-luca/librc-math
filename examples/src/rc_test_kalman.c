@@ -17,11 +17,14 @@
  * @date       4/26/2018
  */
 
+#define __USE_POSIX199309
+#define _POSIX_C_SOURCE 199309L
 
 #include <stdio.h>
 #include <signal.h>
-#include <rc/math/kalman.h>
-#include <rc/time.h>
+#include <errno.h>
+#include <time.h> // for nanosleep
+#include <rc_math/kalman.h>
 
 #define Nx 2
 #define Ny 1
@@ -36,6 +39,19 @@ static void __signal_handler(__attribute__ ((unused)) int dummy)
 {
 	running=0;
 	return;
+}
+
+static void __nanosleep(uint64_t ns){
+    struct timespec req,rem;
+    req.tv_sec = ns/1000000000;
+    req.tv_nsec = ns%1000000000;
+    // loop untill nanosleep sets an error or finishes successfully
+    errno=0; // reset errno to avoid false detection
+    while(nanosleep(&req, &rem) && errno==EINTR){
+        req.tv_sec = rem.tv_sec;
+        req.tv_nsec = rem.tv_nsec;
+    }
+    return;
 }
 
 int main()
@@ -109,7 +125,7 @@ int main()
 
 
 		counter++;
-		rc_usleep(DT*1000000);
+		__nanosleep(DT*1000000000);
 	}
 	printf("\n");
 

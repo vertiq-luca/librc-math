@@ -3,11 +3,10 @@ SRCDIR		:= src
 LIBDIR		:= lib
 BUILDDIR	:= build
 INCLUDEDIR	:= include
-SHORTNAME	:= librobotcontrol.so
-SONAME		:= librobotcontrol.so.1
-FULLNAME	:= librobotcontrol.so.1.0.4
+SHORTNAME	:= librc_math.so
+SONAME		:= librc_math.so.1
+FULLNAME	:= librc_math.so.1.0.0
 TARGET		:= $(LIBDIR)/$(FULLNAME)
-RC_VAR_DIR	:= var/lib/robotcontrol
 
 # file definitions for rules
 SOURCES		:= $(shell find $(SRCDIR) -type f -name *.c)
@@ -15,25 +14,21 @@ OBJECTS		:= $(SOURCES:$(SRCDIR)/%.c=$(BUILDDIR)/%.o)
 INCLUDES	:= $(shell find $(INCLUDEDIR) -name '*.h')
 
 # compiler and linker binaries
-CC		:= gcc
+CC			:= gcc
 LINKER		:= gcc
 
 # general compiler flags
 WFLAGS		:= -Wall -Wextra -Werror=float-equal -Wuninitialized \
-	-Wunused-variable -Wdouble-promotion -pedantic -Wmissing-prototypes \
-	-Wmissing-declarations -Werror=undef
-CFLAGS		:= -g -fPIC -I $(INCLUDEDIR)
-OPT_FLAGS	:= -O1
-LDFLAGS		:= -lm -lrt -pthread -shared -Wl,-soname,$(SONAME)
-
-# different compile flags for math libs
-MATH_OPT_FLAGS	:= -O3 -ffast-math -ftree-vectorize
+				-Wunused-variable -Wdouble-promotion -pedantic \
+				-Wmissing-prototypes -Wmissing-declarations -Werror=undef
+CFLAGS		:= -std=c99 -g -fPIC -I $(INCLUDEDIR)
+OPT_FLAGS	:= -O3 -ffast-math -ftree-vectorize
+LDFLAGS		:= -lm -shared -Wl,-soname,$(SONAME)
 
 # commands
-RM		:= rm -rf
+RM			:= rm -rf
 INSTALL		:= install -m 755
 INSTALLDIR	:= install -d -m 755
-INSTALLDIRWRITE	:= install -d -m 777
 
 # prefix variable for making debian package
 prefix		?= /usr
@@ -48,13 +43,7 @@ $(TARGET): $(OBJECTS)
 	@ln -sf $(FULLNAME) $(LIBDIR)/$(SONAME)
 	@echo "Done making $(TARGET)"
 
-# rule for math libs
-$(BUILDDIR)/math/%.o : $(SRCDIR)/math/%.c $(INCLUDES)
-	@mkdir -p $(dir $(@))
-	@$(CC) -c $(CFLAGS) $(WFLAGS) $(MATH_OPT_FLAGS) $(DEBUGFLAG) $< -o $(@)
-	@echo "made: $(@)"
-
-# rule for all other objects
+# rule for objects
 $(BUILDDIR)/%.o : $(SRCDIR)/%.c $(INCLUDES)
 	@mkdir -p $(dir $(@))
 	@$(CC) -c $(CFLAGS) $(WFLAGS) $(OPT_FLAGS) $(DEBUGFLAG) $< -o $(@)
@@ -80,8 +69,6 @@ install:
 	@$(INSTALL) $(TARGET) $(DESTDIR)$(prefix)/lib
 	@ln -sf $(FULLNAME) $(DESTDIR)$(prefix)/lib/$(SONAME)
 	@ln -sf $(FULLNAME) $(DESTDIR)$(prefix)/lib/$(SHORTNAME)
-	@ln -sf $(FULLNAME) $(DESTDIR)$(prefix)/lib/libroboticscape.so
-	@$(INSTALLDIRWRITE) $(DESTDIR)/$(RC_VAR_DIR)
 	@echo "Library Install Complete"
 
 # cleanup local binaries
@@ -95,11 +82,8 @@ uninstall:
 	$(RM) $(DESTDIR)$(prefix)/lib/$(FULLNAME)
 	$(RM) $(DESTDIR)$(prefix)/lib/$(SONAME)
 	$(RM) $(DESTDIR)$(prefix)/lib/$(SHORTNAME)
-	$(RM) $(DESTDIR)$(prefix)/lib/libroboticscape.so
-	$(RM) $(DESTDIR)$(prefix)/include/roboticscape.h
-	$(RM) $(DESTDIR)$(prefix)/include/robotcontrol.h
-	$(RM) $(DESTDIR)$(prefix)/include/rc_usefulincludes.h
-	$(RM) $(DESTDIR)$(prefix)/include/rc
+	$(RM) $(DESTDIR)$(prefix)/include/rc_math.h
+	$(RM) $(DESTDIR)$(prefix)/include/rc_math
 	@echo "Library Uninstall Complete"
 
 

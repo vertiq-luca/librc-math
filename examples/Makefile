@@ -13,28 +13,24 @@ INCLUDES	:= $(shell find $(INCLUDEDIR) -name '*.h')
 SOURCES		:= $(shell find $(SRCDIR) -type f -name *.c)
 
 # compiler and linker programs
-CC		:= gcc
+CC			:= gcc
 LINKER		:= gcc
 
 # compile flags
 WFLAGS		:= -Wall -Wextra -Werror=float-equal -Wuninitialized \
-	-Wunused-variable -Wdouble-promotion -pedantic -Wmissing-prototypes \
-	-Wmissing-declarations -Werror=undef
-CFLAGS		:= -g -pthread -I $(INCLUDEDIR)
-LDFLAGS		:= -lm -lrt -pthread -L $(LIBDIR) -l:librobotcontrol.so.1
+				-Wunused-variable -Wdouble-promotion -pedantic \
+				-Wmissing-prototypes -Wmissing-declarations -Werror=undef
+CFLAGS		:= -std=c99 -g -pthread -I $(INCLUDEDIR)
+LDFLAGS		:= -lm -lrt -pthread -L $(LIBDIR) -l:librc_math.so.1
 
 # commands
-RM		:= rm -rf
+RM			:= rm -rf
 INSTALL		:= install -m 755
 INSTALLDIR	:= install -d -m 755
 LINK		:= ln -s -f
-LINKDIR		:= /etc/librobotcontrol
-LINKNAME	:= link_to_startup_program
 
 # prefix variable in case this is used to make a deb package
 prefix		?= /usr
-
-
 
 
 all : $(TARGETS)
