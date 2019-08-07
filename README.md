@@ -1,11 +1,58 @@
-Robot Control Library
-===============================
+#librc_math
 
-This package contains the C library and example/testing programs for the Robot Control project. This project began as a hardware interface for the Robotics Cape and later the BeagleBone Blue and was originally called Robotics_Cape_Installer. It grew to include an extensive math library for discrete time feedback control, as well as a plethora of POSIX-compliant functions for timing, threads, program flow, and lots more, all aimed at developing robot control software on embedded computers.
+This is a small collection of basic math and control system routines focused on robotics applications. It is meant to be easier to use, tweak, and modify than Eigen due to its simplicity. Howevever, it doesn't claim to be as vast or optimized as Eigen.
 
+This is a fork of github.com/strawsondesign/librobotcontrol which is stripped down to only the math functions.
 
-Full API documentation, instruction manual, and examples at <http://strawsondesign.com/docs/librobotcontrol/>.
+This branch is intended for use on ModalAI VOXL platforms, but it can be built and run on any platform (x86, BeagleBone, RPi, etc).
 
-We encourage questions and discussion in the [Slack Workspace](https://join.slack.com/t/librobotcontrol/shared_invite/enQtNDIxNTAzNjMxMzYzLWU1OTI5MWFhOWY5ZTM4N2FiMDdlYTY5ZmU0YjYzNzJmZjk4MmU0ZGIzNmFiNmQ5MzI3NWZkOTFiYzMxMDkwZWU).
+## Build Instructions for VOXL
 
-For use with the BeagleBoard.org Robotics Cape available here: https://www.newark.com/element14/bb-cape-robotics/robotics-cape-9-18-vdc/dp/95Y0637
+1) Prerequisite: voxl-emulator docker image. Follow the instructions here:
+
+https://gitlab.com/voxl-public/voxl-docker
+
+2) Launch the voxl-emulator docker image and make sure this project directory is mounted inside the Docker.
+
+```bash
+~/git/librc_math$ voxl-docker -i voxl-emulator
+
+bash-4.3$ ls
+CHANGELOG  Makefile   build.sh  examples          ipk      make_ipk.sh
+LICENSE    README.md  clean.sh  install_on_target.sh  library
+```
+
+5) Compile inside the docker
+
+```bash
+bash-4.3$ ./build.sh
+```
+
+6) Make an ipk package either inside or outside of the docker.
+
+```bash
+bash-4.3$ ./make_package.sh
+
+Package Name:  librc_math
+version Number:  1.0.0
+Library Install Complete
+Examples Install complete
+/usr/bin/ar: creating librc_math_1.0.0.ipk
+
+DONE
+```
+
+## Deploy to VOXL
+
+You can now push the ipk package to the VOXL and install with opkg however you like. To do this over ADB, you may use the included helper script: install_on_voxl.sh. Do this outside of docker as your docker image probably doesn't have usb permissions for ADB.
+
+```bash
+$ ./install_on_voxl.sh
+searching for ADB device
+adb device found
+Setting up directory structure
+pushing librc_math_1.0.0.ipk to target
+librc_math_1.0.0.ipk: 1 file pushed. 2.1 MB/s (441536 bytes in 0.201s)
+Configuring librc_math.
+DONE
+```
