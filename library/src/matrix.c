@@ -178,6 +178,22 @@ int rc_matrix_duplicate(rc_matrix_t A, rc_matrix_t* B)
     return 0;
 }
 
+int rc_matrix_from_array(rc_matrix_t* A, double** ptr, int rows, int cols)
+{
+    // sanity check pointer
+    if(unlikely(ptr==NULL)){
+        fprintf(stderr,"ERROR in rc_matrix_from_array, received NULL pointer\n");
+        return -1;
+    }
+    // make sure there is enough space in A
+    if(unlikely(rc_matrix_alloc(A, rows, cols))){
+        fprintf(stderr,"ERROR in rc_matrix_from_array, failed to allocate matrix\n");
+        return -1;
+    }
+    // copy memory over
+    memcpy(A->d, ptr, rows*cols*sizeof(double));
+    return 0;
+}
 
 int rc_matrix_print(rc_matrix_t A)
 {

@@ -148,7 +148,7 @@ int rc_vector_from_array(rc_vector_t* v, double* ptr, int length)
         fprintf(stderr,"ERROR in rc_vector_from_array, failed to allocate vector\n");
         return -1;
     }
-    // duplicate memory over
+    // copy memory over
     memcpy(v->d, ptr, length*sizeof(double));
     return 0;
 }
