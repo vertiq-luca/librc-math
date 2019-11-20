@@ -68,11 +68,11 @@ make DESTDIR=${CWD}/ipk/data PREFIX=/usr install
 ################################################################################
 
 cd $CONTROL_DIR/
-tar -c -f ../control.tar.gz *
+tar --create --gzip -f ../control.tar.gz *
 cd ../../
 
 cd $DATA_DIR/
-tar -c -f ../data.tar.gz *
+tar --create --gzip -f ../data.tar.gz *
 cd ../../
 
 ar -r $IPK_NAME ipk/control.tar.gz ipk/data.tar.gz ipk/debian-binary
