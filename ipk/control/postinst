@@ -1,0 +1,8 @@
+#!/bin/sh
+
+# fix ownership that opkg messes up
+chown --recursive root:root /usr/
+
+echo ""
+echo "done installing librc_math"
+echo ""

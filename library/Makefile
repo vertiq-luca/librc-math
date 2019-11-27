@@ -5,7 +5,7 @@ BUILDDIR	:= build
 INCLUDEDIR	:= include
 SHORTNAME	:= librc_math.so
 SONAME		:= librc_math.so.1
-FULLNAME	:= librc_math.so.1.0.0
+FULLNAME	:= librc_math.so.1.0.1
 TARGET		:= $(LIBDIR)/$(FULLNAME)
 
 # file definitions for rules

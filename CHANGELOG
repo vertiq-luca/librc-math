@@ -1,2 +1,4 @@
+1.0.1
+    * fix ownership in postinst
 1.0.0
     * initial fork from librobotcontrol
