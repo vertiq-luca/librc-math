@@ -327,6 +327,24 @@ int rc_matrix_right_multiply_inplace(rc_matrix_t* A, rc_matrix_t B)
 }
 
 
+int rc_matrix_multiply_abc(rc_matrix_t A, rc_matrix_t B, rc_matrix_t C, rc_matrix_t* out)
+{
+    if(unlikely(A.initialized!=1 || B.initialized!=1 || C.initialized!=1)){
+        fprintf(stderr,"ERROR in rc_matrix_multiply_abc, matrix not initialized\n");
+        return -1;
+    }
+    if(unlikely(rc_matrix_multiply(B,C,out))){
+        fprintf(stderr,"ERROR in rc_matrix_multiply_abc\n");
+        return -1;
+    }
+    if(unlikely(rc_matrix_left_multiply_inplace(A,out))){
+        fprintf(stderr,"ERROR in rc_matrix_multiply_abc\n");
+        return -1;
+    }
+    return 0;
+}
+
+
 int rc_matrix_add(rc_matrix_t A, rc_matrix_t B, rc_matrix_t* C)
 {
     int i;
@@ -427,6 +445,7 @@ int rc_matrix_transpose_inplace(rc_matrix_t* A)
     return 0;
 }
 
+
 int rc_matrix_times_col_vec(rc_matrix_t A, rc_vector_t v, rc_vector_t* c)
 {
     int i;
@@ -445,6 +464,28 @@ int rc_matrix_times_col_vec(rc_matrix_t A, rc_vector_t v, rc_vector_t* c)
     }
     // run the sum
     for(i=0;i<A.rows;i++) c->d[i]=__vectorized_mult_accumulate(A.d[i],v.d,v.len);
+    return 0;
+}
+
+
+int rc_matrix_times_col_vec_inplace(rc_matrix_t A, rc_vector_t* v)
+{
+    rc_vector_t tmp = RC_VECTOR_INITIALIZER;
+    // sanity checks
+    if(unlikely(A.initialized!=1 || v->initialized!=1)){
+        fprintf(stderr,"ERROR in rc_matrix_times_col_vec_inplace, matrix or vector uninitialized\n");
+        return -1;
+    }
+    if(unlikely(A.cols!=v->len)){
+        fprintf(stderr,"ERROR in rc_matrix_times_col_vec_inplace, dimension mismatch\n");
+        return -1;
+    }
+    if(unlikely(rc_matrix_times_col_vec(A, *v, &tmp))){
+        fprintf(stderr,"ERROR in rc_matrix_times_col_vec_inplace calling rc_matrix_times_col_vec\n");
+        return -1;
+    }
+    rc_vector_free(v);
+    *v=tmp;
     return 0;
 }
 

@@ -1,3 +1,6 @@
+1.0.2
+    * add rc_matrix_times_col_vec_inplace
+    * add rc_matrix_multiply_abc
 1.0.1
     * fix ownership in postinst
 1.0.0

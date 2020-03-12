@@ -121,6 +121,11 @@ int main()
     rc_matrix_times_col_vec(A,b,&y);
     rc_vector_print(y);
 
+    // multiply A times b in place
+    printf("\nA times column vector b in place\n");
+    rc_matrix_times_col_vec_inplace(A,&b);
+    rc_vector_print(y);
+
     // outer product
     printf("\nouter product C=b*y\n");
     rc_matrix_outer_product(b,y,&C);
