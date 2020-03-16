@@ -1,9 +1,9 @@
 /**
  * @headerfile quaternion.h <rc_math/quaternion.h>
  *
- * @brief      Functions for quaternion manipulation.
+ * @brief      Functions for quaternion manipulation and other 3D rotations
  *
- * All functions have two versions, one that acts on an rc_vector_t of length 4
+ * Many functions have two versions, one that acts on an rc_vector_t of length 4
  * and another that acts on normal C arrays, also of length 4. They are
  * functionally identical and just give the user options depending on how they
  * represent quaternions in their code.

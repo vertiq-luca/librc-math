@@ -446,7 +446,8 @@ int rc_quaternion_rotate_vector_array(double v[3], double q[4])
 
 int rc_quaternion_to_rotation_matrix(rc_vector_t q, rc_matrix_t* m)
 {
-    double q0s, q1s, q2s, q3s;
+    double s,xs,ys,zs,wx,wy,wz,xx,xy,xz,yy,yz,zz;
+
     // sanity checks
     if(unlikely(!q.initialized)){
         fprintf(stderr, "ERROR in rc_quaternion_to_rotation_matrix, vector uninitialized\n");
@@ -460,22 +461,126 @@ int rc_quaternion_to_rotation_matrix(rc_vector_t q, rc_matrix_t* m)
         fprintf(stderr, "ERROR in rc_quaternion_to_rotation_matrix, failed to alloc matrix\n");
         return -1;
     }
-    // compute squares which will be used multiple times
-    q0s = q.d[0]*q.d[0];
-    q1s = q.d[1]*q.d[1];
-    q2s = q.d[2]*q.d[2];
-    q3s = q.d[3]*q.d[3];
-    // diagonal entries
-    m->d[0][0] = q0s+q1s-q2s-q3s;
-    m->d[1][1] = q0s-q1s+q2s-q3s;
-    m->d[2][2] = q0s-q1s-q2s+q3s;
-    // upper triangle
-    m->d[0][1] = 2.0 * (q.d[1]*q.d[2] - q.d[0]*q.d[3]);
-    m->d[0][2] = 2.0 * (q.d[1]*q.d[3] + q.d[0]*q.d[2]);
-    m->d[1][2] = 2.0 * (q.d[2]*q.d[3] - q.d[0]*q.d[1]);
-    // lower triangle
-    m->d[1][0] = 2.0 * (q.d[1]*q.d[2] + q.d[0]*q.d[3]);
-    m->d[2][0] = 2.0 * (q.d[1]*q.d[3] - q.d[0]*q.d[2]);
-    m->d[2][1] = 2.0 * (q.d[2]*q.d[3] + q.d[0]*q.d[1]);
+
+    s = 2.0/(q.d[0]*q.d[0] + q.d[1]*q.d[1] + q.d[2]*q.d[2] + q.d[3]*q.d[3]);
+
+    // compute intermediate variables which will be used multiple times
+    xs=q.d[1]*s; ys=q.d[2]*s; zs=q.d[3]*s;
+    wx=q.d[0]*xs; wy=q.d[0]*ys; wz=q.d[0]*zs;
+    xx=q.d[1]*xs; xy=q.d[1]*ys; xz=q.d[1]*zs;
+    yy=q.d[2]*ys; yz=q.d[2]*zs; zz=q.d[3]*zs;
+
+    m->d[0][0] = 1.0 - (yy + zz);
+    m->d[0][1] = xy + wz;;
+    m->d[0][2] = xz - wy;;
+
+    m->d[1][0] = xy - wz;
+    m->d[1][1] = 1.0 - (xx + zz);
+    m->d[1][2] = yz + wx;
+
+    m->d[2][0] = xz + wy;
+    m->d[2][1] = yz - wx;
+    m->d[2][2] = 1.0 - (xx + yy);
+
+    return 0;
+}
+
+
+
+// to match Mavlink, this quaternion takes the form:  w, x, y, z (1 0 0 0 is the null-rotation)
+void rc_rotation_to_quaternion(rc_matrix_t R, rc_vector_t* q)
+{
+    double w,x,y,z,s;
+    double trace = R.d[0][0] + R.d[1][1] + R.d[2][2];
+
+    // sanity checks
+    if(unlikely(!R.initialized)){
+        fprintf(stderr, "ERROR in rc_rotation_to_quaternion, matrix R uninitialized\n");
+        return -1;
+    }
+    if(unlikely(R.rows!=3 || R.cols!=3)){
+        fprintf(stderr, "ERROR in rc_rotation_to_quaternion, R should be 3x3\n");
+        return -1;
+    }
+    if(unlikely(rc_vector_alloc(q,3))){
+        fprintf(stderr, "ERROR in rc_rotation_to_quaternion, failed to alloc vector q\n");
+        return -1;
+    }
+
+    // NEEDS CHECKING
+    if(trace > 0.0){
+        s = sqrt(trace + 1.0);
+        q->d[0] = 0.5 * s;
+        s = 0.5 / s;
+        q->d[1] = (R.d[1][2] - R.d[2][1]) * s;
+        q->d[2] = (R.d[2][0] - R.d[0][2]) * s;
+        q->d[3] = (R.d[0][1] - R.d[1][0]) * s;
+    }
+    if (m22 < 0){
+        if(m00 >m11){
+            t= 1 + m00 -m11 -m22;
+            q = quat( t, m01+m10, m20+m02, m12-m21 );
+        }else{
+            t= 1 -m00 + m11 -m22;
+            q = quat( m01+m10, t, m12+m21, m20-m02 );
+        }
+    }else{
+        if(m00 < -m11){
+            t= 1 -m00 -m11 + m22;
+            q = quat( m20+m02, m12+m21, t, m01-m10 );
+        }else{
+            t= 1 + m00 + m11 + m22;
+            q = quat( m12-m21, m20-m02, m01-m10, t );
+        }
+    }
+    q *= 0.5 / Sqrt(t);
+    return 0;
+}
+
+#define EPSILON 0.00001
+
+int rc_quaternion_slerp(rc_vector_t q1, rc_vector_t q2, double t, rc_vector_t* out)
+{
+    // sanity checks
+    if(unlikely(!q1.initialized || !q2.initialized)){
+        fprintf(stderr, "ERROR in rc_quaternion_slerp, vector uninitialized\n");
+        return -1;
+    }
+    if(unlikely(q1.len!=4 || q2.len!=4)){
+        fprintf(stderr, "ERROR in rc_quaternion_slerp, expected vector of length 4\n");
+        return -1;
+    }
+    if(unlikely(rc_vector_alloc(out,4,4))){
+        fprintf(stderr, "ERROR in rc_quaternion_slerp, failed to alloc vector out\n");
+        return -1;
+    }
+
+    int i;
+    double omega,cosom,sinom,sclp,sclq;
+
+    cosom = (q1.d[0]*q2.d[0])+(q1.d[1]*q2.d[1])+(q1.d[2]*q2.d[2])+(q1.d[3]*q2.d[3]);
+
+    if((1.0+cosom)>EPSILON){
+        if((1.0-cosom)>EPSILON){
+            omega = acos(cosom);
+            sinom = sin(omega);
+            sclp = sin((1.0-t)*omega) / sinom;
+            sclq = sin(t*omega) / sinom;
+        }
+        else{
+            sclp = 1.0 - t;
+            sclq = t;
+        }
+        for(i=0;i<4;i++) out->d[i] = (sclp*q1.d[i]) + (sclq*q2.d[i]);
+    }
+    else{
+        out.d[0] =  q1.d[3];
+        out.d[1] = -q1.d[2];
+        out.d[2] =  q1.d[1];
+        out.d[3] = -q1.d[0];
+        sclp = sin((1.0-t)*M_PI_2);
+        sclq = sin(t*M_PI_2);
+        for(i=1;i<4;i++) out->d[i] = (sclp*q1.d[i]) + (sclq*out->d[i]);
+    }
     return 0;
 }
