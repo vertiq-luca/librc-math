@@ -605,19 +605,19 @@ int rc_quaternion_slerp(rc_vector_t q1, rc_vector_t q2, double t, rc_vector_t* o
 }
 
 
-int rc_axis_angle_to_rotation(rc_vector_t axis, double angle, rc_matrix_t* rotation)
+int rc_axis_angle_to_rotation_matrix(rc_vector_t axis, double angle, rc_matrix_t* R)
 {
     // sanity checks
     if(unlikely(!axis.initialized)){
-        fprintf(stderr, "ERROR in rc_axis_angle_to_rotation, axis vector uninitialized\n");
+        fprintf(stderr, "ERROR in rc_axis_angle_to_rotation_matrix, axis vector uninitialized\n");
         return -1;
     }
     if(unlikely(axis.len!=3)){
-        fprintf(stderr, "ERROR in rc_axis_angle_to_rotation, expected vector of length 3\n");
+        fprintf(stderr, "ERROR in rc_axis_angle_to_rotation_matrix, expected vector of length 3\n");
         return -1;
     }
-    if(unlikely(rc_matrix_alloc(rotation,3,3))){
-        fprintf(stderr, "ERROR in rc_axis_angle_to_rotation, failed to alloc matrix for result\n");
+    if(unlikely(rc_matrix_alloc(R,3,3))){
+        fprintf(stderr, "ERROR in rc_axis_angle_to_rotation_matrix, failed to alloc matrix for result\n");
         return -1;
     }
 
@@ -628,7 +628,7 @@ int rc_axis_angle_to_rotation(rc_vector_t axis, double angle, rc_matrix_t* rotat
     double axis_norm = rc_vector_norm(axis,2.0);
 
     if(fabs(axis_norm)<0.00001){
-        fprintf(stderr,"ERROR in rc_axis_angle_to_rotation, axis vector must have nonzero length\n");
+        fprintf(stderr,"ERROR in rc_axis_angle_to_rotation_matrix, axis vector must have nonzero length\n");
         return -1;
     }
 
@@ -636,17 +636,17 @@ int rc_axis_angle_to_rotation(rc_vector_t axis, double angle, rc_matrix_t* rotat
     double y = axis.d[1]/axis_norm;
     double z = axis.d[2]/axis_norm;
 
-    rotation->d[0][0] = c + (x*x*omcos);
-    rotation->d[0][1] = (x*y*omcos) - (z*s);
-    rotation->d[0][2] = (x*z*omcos) + (y*s);
+    R->d[0][0] = c + (x*x*omcos);
+    R->d[0][1] = (x*y*omcos) - (z*s);
+    R->d[0][2] = (x*z*omcos) + (y*s);
 
-    rotation->d[1][0] = (x*y*omcos) + (z*s);
-    rotation->d[1][1] = c + (y*y*omcos);
-    rotation->d[1][2] = (y*z*omcos) - (x*s);
+    R->d[1][0] = (x*y*omcos) + (z*s);
+    R->d[1][1] = c + (y*y*omcos);
+    R->d[1][2] = (y*z*omcos) - (x*s);
 
-    rotation->d[2][0] = (x*z*omcos) - (y*s);
-    rotation->d[2][1] = (y*z*omcos) + (x*s);
-    rotation->d[2][2] = c + (z*z*omcos);
+    R->d[2][0] = (x*z*omcos) - (y*s);
+    R->d[2][1] = (y*z*omcos) + (x*s);
+    R->d[2][2] = c + (z*z*omcos);
 
     return 0;
 }

@@ -316,7 +316,7 @@ int rc_quaternion_slerp(rc_vector_t q1, rc_vector_t q2, double t, rc_vector_t* o
  *
  * @return     0 on success, -1 on failure
  */
-int rc_axis_angle_to_rotation(rc_vector_t axis, double angle, rc_matrix_t* rotation);
+int rc_axis_angle_to_rotation_matrix(rc_vector_t axis, double angle, rc_matrix_t* R);
 
 /**
  * @brief      Convert a rotation matrix to tait-bryan angles
