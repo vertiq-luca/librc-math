@@ -387,6 +387,24 @@ int rc_vector_sum_inplace(rc_vector_t* v1, rc_vector_t v2);
 int rc_vector_subtract(rc_vector_t v1, rc_vector_t v2, rc_vector_t* s);
 
 
+/**
+ * @brief      Linearly interpolate between two vectors
+ *
+ *             The interpolation constant t sets the position between v1 and v2
+ *             to evalulate the answer. setting t=0 returns v1, setting t=1.0
+ *             returns v2. It's also allowed for t to be outside the range 0 to 1.
+ *
+ * @param[in]  v1    first vector
+ * @param[in]  v2    second vector
+ * @param[in]  t     interpolation constant (usually between 0 & 1)
+ * @param      out   result output. Memory for output vector is allocated or
+ *                   reallocated if necessary.
+ *
+ * @return     0 on success, -1 on failure
+ */
+int rc_vector_lin_interpolate(rc_vector_t v1, rc_vector_t v2, double t, rc_vector_t* out);
+
+
 #ifdef __cplusplus
 }
 #endif

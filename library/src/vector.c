@@ -440,3 +440,25 @@ int rc_vector_subtract(rc_vector_t v1, rc_vector_t v2, rc_vector_t* s)
     for(i=0;i<v1.len;i++) s->d[i]=v1.d[i]-v2.d[i];
     return 0;
 }
+
+int rc_vector_lin_interpolate(rc_vector_t v1, rc_vector_t v2, double t, rc_vector_t* out)
+{
+    if(unlikely(!v1.initialized || !v2.initialized)){
+        fprintf(stderr,"ERROR in rc_vector_lin_interpolate, vector uninitialized\n");
+        return -1;
+    }
+    if(unlikely(v1.len != v2.len)){
+        fprintf(stderr,"ERROR in rc_vector_lin_interpolate, dimension mismatch\n");
+        return -1;
+    }
+    if(unlikely(rc_vector_alloc(out,v1.len))){
+        fprintf(stderr,"ERROR in rc_vector_lin_interpolate, failed to allocate memory for out vector\n");
+        return -1;
+    }
+    int i;
+    for(i=0;i<v1.len;i++){
+        out->d[i] = v1.d[i] + (t*(v2.d[i]-v1.d[i]));
+    }
+    return 0;
+}
+
