@@ -282,7 +282,8 @@ int rc_matrix_multiply(rc_matrix_t A, rc_matrix_t B, rc_matrix_t* C)
 
 int rc_matrix_left_multiply_inplace(rc_matrix_t A, rc_matrix_t* B)
 {
-    rc_matrix_t tmp = RC_MATRIX_INITIALIZER;
+    int i,j;
+    double* tmp;
     // Sanity Checks
     if(unlikely(A.initialized!=1 || B->initialized!=1)){
         fprintf(stderr,"ERROR in rc_matrix_left_multiply_inplace, matrix not initialized\n");
@@ -292,18 +293,39 @@ int rc_matrix_left_multiply_inplace(rc_matrix_t A, rc_matrix_t* B)
         fprintf(stderr,"ERROR in rc_matrix_left_multiply_inplace, dimension mismatch\n");
         return -1;
     }
-    // use the normal multiply function which will allocate memory for tmp
-    if(rc_matrix_multiply(A, *B, &tmp)){
-        fprintf(stderr,"ERROR in rc_matrix_left_multiply_inplace, failed to multiply\n");
-        rc_matrix_free(&tmp);
+
+    // allocate memory for a column of B from the stack, this is faster than
+    // malloc and the memory is freed automatically when this function returns
+    // it is faster to put a column in contiguous memory before multiplying
+    tmp = alloca(B->rows*B->cols*sizeof(double));
+    if(unlikely(tmp==NULL)){
+        fprintf(stderr,"ERROR in rc_matrix_left_multiply_inplace, alloca failed, stack overflow\n");
         return -1;
     }
-    rc_matrix_free(B);
-    *B=tmp;
+    // populate tmp matrix with transpose of B
+    int s = B->rows;
+    for(i=0;i<(B->cols);i++){
+        // put column of B in sequential memory slot
+        for(j=0;j<B->rows;j++) tmp[(i*s)+j]=B->d[j][i];
+    }
+
+    // reallocate B if it needs changing size
+    if(unlikely(rc_matrix_alloc(B,A.rows,B->cols))){
+        fprintf(stderr,"ERROR in rc_matrix_left_multiply_inplace, can't allocate memory for B\n");
+        return -1;
+    }
+
+    // calculate each row in column i
+    for(i=0;i<(B->cols);i++){
+        for(j=0;j<(B->rows);j++){
+            B->d[j][i]=__vectorized_mult_accumulate(A.d[j], &tmp[i*s], A.cols);
+        }
+    }
     return 0;
 }
 
 
+// TODO: move all temporary memory to stack
 int rc_matrix_right_multiply_inplace(rc_matrix_t* A, rc_matrix_t B)
 {
     rc_matrix_t tmp = RC_MATRIX_INITIALIZER;

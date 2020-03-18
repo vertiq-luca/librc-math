@@ -338,6 +338,17 @@ int rc_axis_angle_to_rotation_matrix(rc_vector_t axis, double angle, rc_matrix_t
  */
 int rc_rotation_to_tait_bryan(rc_matrix_t R, double* roll, double* pitch, double* yaw);
 
+/**
+ * @brief      generate a rotation matrix from tait-bryan angles
+ *
+ * @param[in]  roll   The roll
+ * @param[in]  pitch  The pitch
+ * @param[in]  yaw    The yaw
+ * @param      R      output
+ *
+ * @return     0 on success, -1 on failure
+ */
+int rc_rotation_matrix_from_tait_bryan(double roll, double pitch, double yaw, rc_matrix_t* R);
 
 #ifdef __cplusplus
 }

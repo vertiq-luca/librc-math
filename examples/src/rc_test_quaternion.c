@@ -13,7 +13,7 @@
 
 int main()
 {
-    double t;
+    double t, roll, pitch, yaw;
     rc_vector_t q1 = RC_VECTOR_INITIALIZER;
     rc_vector_t q2 = RC_VECTOR_INITIALIZER;
     rc_vector_t q3 = RC_VECTOR_INITIALIZER;
@@ -66,6 +66,14 @@ int main()
     rc_quaternion_slerp(q1, q2, t, &q3);
     printf("t=%0.2f: ",t);
     rc_vector_print(q3);
+
+    printf("\nconvert R to tait bryan angles\n");
+    rc_rotation_to_tait_bryan(R, &roll, &pitch, &yaw);
+    printf("Roll: %0.3f Pitch %0.3f Yaw: %0.3f\n", roll, pitch, yaw);
+
+    printf("\nconvert tait bryan angles back to rotation matrix R\n");
+    rc_rotation_matrix_from_tait_bryan(roll, pitch, yaw, &R);
+    rc_matrix_print(R);
 
 
     rc_vector_free(&q1);
