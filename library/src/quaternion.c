@@ -711,3 +711,26 @@ int rc_rotation_matrix_from_tait_bryan(double roll, double pitch, double yaw, rc
     return 0;
 }
 
+int rc_rotation_matrix_from_yaw(double yaw, rc_matrix_t* R)
+{
+    // sanity checks
+    if(unlikely(rc_matrix_alloc(R,3,3))){
+        fprintf(stderr, "ERROR in rc_rotation_matrix_from_yaw, failed to alloc matrix for result\n");
+        return -1;
+    }
+
+    double s = sin(yaw);
+    double c = cos(yaw);
+    R->d[0][0] =  c;
+    R->d[0][1] = -s;
+    R->d[0][2] =  0;
+    R->d[1][0] =  s;
+    R->d[1][1] =  c;
+    R->d[1][2] =  0;
+    R->d[2][0] =  0;
+    R->d[2][1] =  0;
+    R->d[2][2] =  1;
+
+    return 0;
+}
+

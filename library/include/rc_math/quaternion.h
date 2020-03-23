@@ -350,6 +350,16 @@ int rc_rotation_to_tait_bryan(rc_matrix_t R, double* roll, double* pitch, double
  */
 int rc_rotation_matrix_from_tait_bryan(double roll, double pitch, double yaw, rc_matrix_t* R);
 
+/**
+ * @brief      like rc_rotation_matric_from_tait_bryan but only yaw
+ *
+ * @param[in]  yaw    The yaw
+ * @param      R      output
+ *
+ * @return     0 on success, -1 on failure
+ */
+int rc_rotation_matrix_from_yaw(double yaw, rc_matrix_t* R);
+
 #ifdef __cplusplus
 }
 #endif
