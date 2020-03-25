@@ -245,7 +245,7 @@ int rc_matrix_times_scalar(rc_matrix_t* A, double s)
 int rc_matrix_multiply(rc_matrix_t A, rc_matrix_t B, rc_matrix_t* C)
 {
     int i,j;
-    double* tmp;
+
     if(unlikely(A.initialized!=1 || B.initialized!=1)){
         fprintf(stderr,"ERROR in rc_matrix_multiply, matrix not initialized\n");
         return -1;
@@ -259,14 +259,8 @@ int rc_matrix_multiply(rc_matrix_t A, rc_matrix_t B, rc_matrix_t* C)
         fprintf(stderr,"ERROR in rc_matrix_multiply, can't allocate memory for C\n");
         return -1;
     }
-    // allocate memory for a column of B from the stack, this is faster than
-    // malloc and the memory is freed automatically when this function returns
-    // it is faster to put a column in contiguous memory before multiplying
-    tmp = alloca(B.rows*sizeof(double));
-    if(unlikely(tmp==NULL)){
-        fprintf(stderr,"ERROR in rc_matrix_multiply, alloca failed, stack overflow\n");
-        return -1;
-    }
+
+    double tmp[B.rows];
     // go through columns of B calculating columns of C left to right
     for(i=0;i<(B.cols);i++){
         // put column of B in sequential memory slot
@@ -283,7 +277,7 @@ int rc_matrix_multiply(rc_matrix_t A, rc_matrix_t B, rc_matrix_t* C)
 int rc_matrix_left_multiply_inplace(rc_matrix_t A, rc_matrix_t* B)
 {
     int i,j;
-    double* tmp;
+
     // Sanity Checks
     if(unlikely(A.initialized!=1 || B->initialized!=1)){
         fprintf(stderr,"ERROR in rc_matrix_left_multiply_inplace, matrix not initialized\n");
@@ -294,15 +288,9 @@ int rc_matrix_left_multiply_inplace(rc_matrix_t A, rc_matrix_t* B)
         return -1;
     }
 
-    // allocate memory for a column of B from the stack, this is faster than
-    // malloc and the memory is freed automatically when this function returns
-    // it is faster to put a column in contiguous memory before multiplying
-    tmp = alloca(B->rows*B->cols*sizeof(double));
-    if(unlikely(tmp==NULL)){
-        fprintf(stderr,"ERROR in rc_matrix_left_multiply_inplace, alloca failed, stack overflow\n");
-        return -1;
-    }
     // populate tmp matrix with transpose of B
+    // it is faster to put a column in contiguous memory before multiplying
+    double tmp[B->rows*B->cols];
     int s = B->rows;
     for(i=0;i<(B->cols);i++){
         // put column of B in sequential memory slot
@@ -328,7 +316,7 @@ int rc_matrix_left_multiply_inplace(rc_matrix_t A, rc_matrix_t* B)
 // TODO: move all temporary memory to stack
 int rc_matrix_right_multiply_inplace(rc_matrix_t* A, rc_matrix_t B)
 {
-    rc_matrix_t tmp = RC_MATRIX_INITIALIZER;
+    int i,j;
     // Sanity Checks
     if(unlikely(A->initialized!=1 || B.initialized!=1)){
         fprintf(stderr,"ERROR in rc_matrix_right_multiply_inplace, matrix not initialized\n");
@@ -338,13 +326,30 @@ int rc_matrix_right_multiply_inplace(rc_matrix_t* A, rc_matrix_t B)
         fprintf(stderr,"ERROR in rc_matrix_right_multiply_inplace, dimension mismatch\n");
         return -1;
     }
-    if(rc_matrix_multiply(*A, B, &tmp)){
-        fprintf(stderr,"ERROR in rc_matrix_right_multiply_inplace, failed to multiply\n");
-        rc_matrix_free(&tmp);
+
+    // populate tmp matrix with contents of A
+    double tmpA[A->rows*A->cols];
+    int s = A->cols;
+    for(i=0;i<(A->rows);i++){
+        for(j=0;j<A->cols;j++) tmpA[(i*s)+j]=A->d[i][j];
+    }
+
+    // resize A if necessary
+    if(unlikely(rc_matrix_alloc(A,A->rows,B.cols))){
+        fprintf(stderr,"ERROR in rc_matrix_right_multiply_inplace, can't allocate memory for A\n");
         return -1;
     }
-    rc_matrix_free(A);
-    *A=tmp;
+
+    double tmp[B.rows];
+    // go through columns of B calculating columns of C left to right
+    for(i=0;i<(B.cols);i++){
+        // put column of B in sequential memory slot
+        for(j=0;j<B.rows;j++) tmp[j]=B.d[j][i];
+        // calculate each row in column i
+        for(j=0;j<(A->rows);j++){
+            A->d[j][i]=__vectorized_mult_accumulate(&tmpA[j*s],tmp,B.rows);
+        }
+    }
     return 0;
 }
 
@@ -517,7 +522,7 @@ int rc_matrix_times_col_vec_inplace(rc_matrix_t A, rc_vector_t* v)
 int rc_matrix_row_vec_times_matrix(rc_vector_t v, rc_matrix_t A, rc_vector_t* c)
 {
     int i,j;
-    double* tmp;
+
     // sanity checks
     if(unlikely(A.initialized!=1 || v.initialized!=1)){
         fprintf(stderr,"ERROR in rc_matrix_row_vec_times_matrix, matrix or vector uninitialized\n");
@@ -530,7 +535,7 @@ int rc_matrix_row_vec_times_matrix(rc_vector_t v, rc_matrix_t A, rc_vector_t* c)
     // allocate memory for a column of A from the stack, this is faster than
     // malloc and the memory is freed automatically when this function returns
     // it is faster to put a column of A in contiguous memory then multiply
-    tmp = alloca(A.rows*sizeof(double));
+    double tmp[A.rows];
     if(unlikely(tmp==NULL)){
         fprintf(stderr,"ERROR in rc_matrix_row_vec_times_matrix, alloca failed, stack overflow\n");
         return -1;
