@@ -492,7 +492,6 @@ int rc_matrix_times_col_vec(rc_matrix_t A, rc_vector_t v, rc_vector_t* c)
 
 int rc_matrix_times_col_vec_inplace(rc_matrix_t A, rc_vector_t* v)
 {
-    rc_vector_t tmp = RC_VECTOR_INITIALIZER;
     // sanity checks
     if(unlikely(A.initialized!=1 || v->initialized!=1)){
         fprintf(stderr,"ERROR in rc_matrix_times_col_vec_inplace, matrix or vector uninitialized\n");
@@ -502,12 +501,15 @@ int rc_matrix_times_col_vec_inplace(rc_matrix_t A, rc_vector_t* v)
         fprintf(stderr,"ERROR in rc_matrix_times_col_vec_inplace, dimension mismatch\n");
         return -1;
     }
-    if(unlikely(rc_matrix_times_col_vec(A, *v, &tmp))){
+
+    // duplicate v
+    RC_VECTOR_ON_STACK(tmp,v->len);
+    for(int i=0;i<v->len;i++) tmp.d[i]=v->d[i];
+
+    if(unlikely(rc_matrix_times_col_vec(A, tmp, v))){
         fprintf(stderr,"ERROR in rc_matrix_times_col_vec_inplace calling rc_matrix_times_col_vec\n");
         return -1;
     }
-    rc_vector_free(v);
-    *v=tmp;
     return 0;
 }
 

@@ -1,6 +1,9 @@
 1.0.2
     * add rc_matrix_times_col_vec_inplace
     * add rc_matrix_multiply_abc
+    * add experimental RC_VECTOR_ON_STACK
+    * rc_matrix_times_col_vec_inplace handles vectors on stack
+    * lots of new rotation functions in quaternion.h
 1.0.1
     * fix ownership in postinst
 1.0.0

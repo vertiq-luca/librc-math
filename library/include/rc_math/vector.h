@@ -51,6 +51,14 @@ typedef struct rc_vector_t{
     .initialized = 0}
 
 
+#define RC_VECTOR_ON_STACK(name,size)   \
+        double name##_array[size];      \
+        rc_vector_t name = {            \
+        .len = size,                    \
+        .d = name##_array,              \
+        .initialized = 1}
+
+
 /**
  * @brief      Returns an rc_vector_t with no allocated memory and the
  * initialized flag set to 0.
