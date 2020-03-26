@@ -1,4 +1,4 @@
-1.0.2
+1.1.0
     * add rc_matrix_times_col_vec_inplace
     * add rc_matrix_multiply_abc
     * add experimental RC_VECTOR_ON_STACK
