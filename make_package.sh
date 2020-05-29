@@ -51,7 +51,7 @@ echo "version Number: " $VERSION
 ################################################################################
 # start with a little cleanup to remove old files
 ################################################################################
-rm -rf $DATA_DIR
+sudo rm -rf $DATA_DIR
 mkdir -p $DATA_DIR
 rm -rf ipk/control.tar.gz
 rm -rf ipk/data.tar.gz
