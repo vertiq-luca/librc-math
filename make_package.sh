@@ -51,7 +51,8 @@ echo "version Number: " $VERSION
 ################################################################################
 # start with a little cleanup to remove old files
 ################################################################################
-rm -rf $DATA_DIR/*
+rm -rf $DATA_DIR
+mkdir -p $DATA_DIR
 rm -rf ipk/control.tar.gz
 rm -rf ipk/data.tar.gz
 rm -rf $IPK_NAME
@@ -60,8 +61,9 @@ rm -rf $IPK_NAME
 ## copy useful files into data directory
 ################################################################################
 
+# must run as root so files in ipk have correct permissions
 CWD=`pwd`
-make DESTDIR=${CWD}/ipk/data PREFIX=/usr install
+sudo make DESTDIR=${CWD}/ipk/data PREFIX=/usr install
 
 ################################################################################
 # pack the control, data, and final ipk archives
