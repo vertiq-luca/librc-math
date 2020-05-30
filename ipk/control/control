@@ -5,4 +5,4 @@ Priority: optional
 Architecture: armv7a
 Depends:
 Maintainer: James Strawson <james@modalai.com>
-Description: ModalAI library allowing apps processor access to accessory serial ports
+Description: Math and Linear Algebra Routines for Robotics
