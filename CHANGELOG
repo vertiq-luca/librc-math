@@ -1,3 +1,5 @@
+1.1.2
+    * move to automated CI build
 1.1.0
     * add rc_matrix_times_col_vec_inplace
     * add rc_matrix_multiply_abc
