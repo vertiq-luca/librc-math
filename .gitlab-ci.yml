@@ -33,6 +33,9 @@
 
 image: voxl-emulator
 
+variables:
+  GIT_SUBMODULE_STRATEGY: recursive
+
 build1:
   stage: build
   only:
