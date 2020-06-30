@@ -1,4 +1,4 @@
-#librc_math
+# librc_math
 
 This is a small collection of basic math and control system routines focused on robotics applications. It is meant to be easier to use, tweak, and modify than Eigen due to its simplicity. Howevever, it doesn't claim to be as vast or optimized as Eigen.
 

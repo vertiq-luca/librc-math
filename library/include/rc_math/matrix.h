@@ -150,6 +150,24 @@ int rc_matrix_random(rc_matrix_t* A, int rows, int cols);
 int rc_matrix_diagonal(rc_matrix_t* A, rc_vector_t v);
 
 /**
+ * @brief      Resizes matrix A and populates with values from specified 2D
+ * array
+ *
+ * Any existing memory allocated for A is freed if necessary to avoid memory
+ * leaks. It is not necessary to call rc_alloc_matrix before this. This is
+ * generally used when the user has an existing array of data and wants to use
+ * it with other math functions.
+ *
+ * @param      A       Pointer to user's rc_matrix_t struct
+ * @param[in]  ptr     pointer to 2D array to read values from
+ * @param[in]  rows  number of rows
+ * @param[in]  cols  number of columns
+ *
+ * @return     Returns 0 if successful, otherwise returns -1.
+ */
+int rc_matrix_from_array(rc_matrix_t* A, double** ptr, int rows, int cols);
+
+/**
  * @brief      Duplicates the contents of matrix A and into matrix B.
  *
  * If B is already the right size then its contents are overwritten. If B is
