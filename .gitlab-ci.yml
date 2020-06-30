@@ -1,0 +1,18 @@
+before_script:
+  - git clone -q --depth 1 https://gitlab.com/voxl-public/ci-tools.git
+
+include:
+  - project: 'voxl-public/ci-tools' 
+    file: '/pipeline-configs/.build-voxl-emulator.yml'
+  - project: 'voxl-public/ci-tools' 
+    file: '/pipeline-configs/.deploy-dev.yml'
+  - project: 'voxl-public/ci-tools' 
+    file: '/pipeline-configs/.deploy-stable.yml'
+
+variables:
+  GIT_SUBMODULE_STRATEGY: recursive
+
+stages:
+  - build_stage
+  - deploy_stage_dev
+  - deploy_stage_stable

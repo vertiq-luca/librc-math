@@ -51,6 +51,14 @@ typedef struct rc_vector_t{
     .initialized = 0}
 
 
+#define RC_VECTOR_ON_STACK(name,size)   \
+        double name##_array[size];      \
+        rc_vector_t name = {            \
+        .len = size,                    \
+        .d = name##_array,              \
+        .initialized = 1}
+
+
 /**
  * @brief      Returns an rc_vector_t with no allocated memory and the
  * initialized flag set to 0.
@@ -385,6 +393,24 @@ int rc_vector_sum_inplace(rc_vector_t* v1, rc_vector_t v2);
  * @return     Returns 0 on success, otherwise -1.
  */
 int rc_vector_subtract(rc_vector_t v1, rc_vector_t v2, rc_vector_t* s);
+
+
+/**
+ * @brief      Linearly interpolate between two vectors
+ *
+ *             The interpolation constant t sets the position between v1 and v2
+ *             to evalulate the answer. setting t=0 returns v1, setting t=1.0
+ *             returns v2. It's also allowed for t to be outside the range 0 to 1.
+ *
+ * @param[in]  v1    first vector
+ * @param[in]  v2    second vector
+ * @param[in]  t     interpolation constant (usually between 0 & 1)
+ * @param      out   result output. Memory for output vector is allocated or
+ *                   reallocated if necessary.
+ *
+ * @return     0 on success, -1 on failure
+ */
+int rc_vector_lin_interpolate(rc_vector_t v1, rc_vector_t v2, double t, rc_vector_t* out);
 
 
 #ifdef __cplusplus

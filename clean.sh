@@ -34,10 +34,10 @@
 
 set -e # exit on error
 
-make clean
+sudo make clean
 
 # clean remnants of ipk generation
-rm -rf ipk/data ipk/control.tar.gz ipk/data.tar.gz
+sudo rm -rf ipk/data ipk/control.tar.gz ipk/data.tar.gz
 rm -rf *.ipk
 
 

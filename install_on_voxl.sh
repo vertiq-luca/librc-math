@@ -61,8 +61,8 @@ adb shell mkdir -p /home/root/ipk
 
 echo "pushing $FILE to target"
 adb push $FILE /home/root/ipk/$FILE
-adb shell "opkg remove $PACKAGE"
-adb shell "opkg install /home/root/ipk/$FILE"
+adb shell "opkg install --force-reinstall --force-downgrade --force-depends /home/root/ipk/$FILE"
+
 
 echo
 echo DONE

@@ -222,4 +222,7 @@ pip-log.txt
 .bash_history
 .android/*
 
+#qemu core files
+*.core
+
 

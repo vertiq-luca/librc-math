@@ -266,12 +266,24 @@ int rc_matrix_left_multiply_inplace(rc_matrix_t A, rc_matrix_t* B);
  * A is resized and its original contents are freed if necessary to avoid memory
  * leaks.
  *
+ * @param[in]  A     first input
+ * @param[in]  B     second input
+ * @param[in]  C     third input
+ * @param[out] out   result
+ *
+ * @return     Returns 0 on success or -1 on failure.
+ */
+int rc_matrix_right_multiply_inplace(rc_matrix_t* A, rc_matrix_t B);
+
+/**
+ * @brief      Multiplies A*B*c and puts the result in matrix out
+ *
  * @param      A     left matrix in the multiplication and holder of result
  * @param[in]  B     right matrix in the multiplication
  *
  * @return     Returns 0 on success or -1 on failure.
  */
-int rc_matrix_right_multiply_inplace(rc_matrix_t* A, rc_matrix_t B);
+int rc_matrix_multiply_abc(rc_matrix_t A, rc_matrix_t B, rc_matrix_t C, rc_matrix_t* out);
 
 /**
  * @brief      Adds matrices A+B and places the result in C.
@@ -355,7 +367,18 @@ int rc_matrix_transpose_inplace(rc_matrix_t* A);
  *
  * @return     Returns 0 on success or -1 on failure.
  */
-int   rc_matrix_times_col_vec(rc_matrix_t A, rc_vector_t v, rc_vector_t* c);
+int rc_matrix_times_col_vec(rc_matrix_t A, rc_vector_t v, rc_vector_t* c);
+
+/**
+ * @brief      Multiplies matrix A times column vector v and places the result
+ * back in column vector v.
+ *
+ * @param[in]  A     input matrix
+ * @param[out] v     input/output vector
+ *
+ * @return     Returns 0 on success or -1 on failure.
+ */
+int rc_matrix_times_col_vec_inplace(rc_matrix_t A, rc_vector_t* v);
 
 /**
  * @brief      Multiplies row vector v times matrix A and places the result in
@@ -371,7 +394,7 @@ int   rc_matrix_times_col_vec(rc_matrix_t A, rc_vector_t v, rc_vector_t* c);
  *
  * @return     Returns 0 on success or -1 on failure.
  */
-int   rc_matrix_row_vec_times_matrix(rc_vector_t v, rc_matrix_t A, rc_vector_t* c);
+int rc_matrix_row_vec_times_matrix(rc_vector_t v, rc_matrix_t A, rc_vector_t* c);
 
 /**
  * @brief      Computes v1 times v2 where v1 is a column vector and v2 is a row

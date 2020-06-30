@@ -5,7 +5,7 @@ BUILDDIR	:= build
 INCLUDEDIR	:= include
 SHORTNAME	:= librc_math.so
 SONAME		:= librc_math.so.1
-FULLNAME	:= librc_math.so.1.0.0
+FULLNAME	:= librc_math.so.1.0.2
 TARGET		:= $(LIBDIR)/$(FULLNAME)
 
 # file definitions for rules
@@ -19,7 +19,7 @@ LINKER		:= gcc
 
 # general compiler flags
 WFLAGS		:= -Wall -Wextra -Werror=float-equal -Wuninitialized \
-				-Wunused-variable -Wdouble-promotion -pedantic \
+				-Wdouble-promotion -pedantic \
 				-Wmissing-prototypes -Wmissing-declarations -Werror=undef
 CFLAGS		:= -std=c99 -g -fPIC -I $(INCLUDEDIR)
 OPT_FLAGS	:= -O3 -ffast-math -ftree-vectorize

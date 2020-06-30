@@ -121,11 +121,71 @@ int main()
     rc_matrix_times_col_vec(A,b,&y);
     rc_vector_print(y);
 
+    // multiply A times b in place
+    printf("\nA times column vector b in place\n");
+    rc_matrix_times_col_vec_inplace(A,&b);
+    rc_vector_print(y);
+
     // outer product
     printf("\nouter product C=b*y\n");
     rc_matrix_outer_product(b,y,&C);
     rc_matrix_print(C);
 
+    // now try non-square
+    // random matrix
+    printf("\nNew Random non-square Matrix A:\n");
+    rc_matrix_random(&A,DIM,DIM+1);
+    rc_matrix_print(A);
+
+    printf("\nNew Random non-square Matrix B:\n");
+    rc_matrix_random(&B,DIM+1,DIM);
+    rc_matrix_print(B);
+
+    // multiply A*B=C
+    printf("\nThree ways to multiply:");
+    printf("\nA*B=C:\n");
+    rc_matrix_multiply(A,B,&C);
+    rc_matrix_print(C);
+
+    // left multiply in place
+    printf("\nleft multiply inplace B=A*B\n");
+    rc_matrix_duplicate(B,&B_dup);
+    rc_matrix_left_multiply_inplace(A,&B_dup);
+    rc_matrix_print(B_dup);
+
+    // right multiply in place
+    printf("\nright multiply inplace A=A*B\n");
+    rc_matrix_duplicate(A,&A_dup);
+    rc_matrix_right_multiply_inplace(&A_dup,B);
+    rc_matrix_print(A_dup);
+
+    // now try non-square
+    // random matrix
+    printf("\nNew Random non-square Matrix A:\n");
+    rc_matrix_random(&A,DIM+2,DIM);
+    rc_matrix_print(A);
+
+    printf("\nNew Random non-square Matrix B:\n");
+    rc_matrix_random(&B,DIM,DIM+2);
+    rc_matrix_print(B);
+
+    // multiply A*B=C
+    printf("\nThree ways to multiply:");
+    printf("\nA*B=C:\n");
+    rc_matrix_multiply(A,B,&C);
+    rc_matrix_print(C);
+
+    // left multiply in place
+    printf("\nleft multiply inplace B=A*B\n");
+    rc_matrix_duplicate(B,&B_dup);
+    rc_matrix_left_multiply_inplace(A,&B_dup);
+    rc_matrix_print(B_dup);
+
+    // right multiply in place
+    printf("\nright multiply inplace A=A*B\n");
+    rc_matrix_duplicate(A,&A_dup);
+    rc_matrix_right_multiply_inplace(&A_dup,B);
+    rc_matrix_print(A_dup);
 
     printf("\nDONE\n");
     return 0;

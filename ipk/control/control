@@ -1,8 +1,8 @@
 Package: librc_math
-Version: 1.0.0
+Version: 1.1.2
 Section: base
 Priority: optional
-Architecture: aarch64
+Architecture: armv7a
 Depends:
 Maintainer: James Strawson <james@modalai.com>
-Description: ModalAI library allowing apps processor access to accessory serial ports
+Description: Math and Linear Algebra Routines for Robotics

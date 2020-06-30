@@ -38,18 +38,18 @@ double rc_quaternion_norm_array(double q[4])
 }
 
 
-int rc_normalize_quaternion(rc_vector_t* q)
+int rc_quaternion_normalize(rc_vector_t* q)
 {
     int i;
     double len;
     // sanity checks
     if(unlikely(q->len!=4)){
-        fprintf(stderr, "ERROR in rc_normalize_quaternion, expected vector of length 4\n");
+        fprintf(stderr, "ERROR in rc_quaternion_normalize, expected vector of length 4\n");
         return -1;
     }
     len = rc_vector_norm(*q,2);
     if(unlikely(len<=0.0)){
-        fprintf(stderr, "ERROR in rc_normalize_quaternion, unable to calculate norm\n");
+        fprintf(stderr, "ERROR in rc_quaternion_normalize, unable to calculate norm\n");
         return -1;
     }
     for(i=0;i<4;i++) q->d[i]/=len;
@@ -57,7 +57,7 @@ int rc_normalize_quaternion(rc_vector_t* q)
 }
 
 
-int rc_normalize_quaternion_array(double q[4])
+int rc_quaternion_normalize_array(double q[4])
 {
     int i;
     double len;
@@ -153,7 +153,7 @@ int rc_quaternion_from_tb_array(double tb[3], double q[4])
     q[1] = sinX2*cosY2*cosZ2 - cosX2*sinY2*sinZ2;
     q[2] = cosX2*sinY2*cosZ2 + sinX2*cosY2*sinZ2;
     q[3] = cosX2*cosY2*sinZ2 - sinX2*sinY2*cosZ2;
-    rc_normalize_quaternion_array(q);
+    rc_quaternion_normalize_array(q);
     return 0;
 }
 
@@ -444,9 +444,10 @@ int rc_quaternion_rotate_vector_array(double v[3], double q[4])
 
 
 
-int rc_quaternion_to_rotation_matrix(rc_vector_t q, rc_matrix_t* m)
+int rc_quaternion_to_rotation_matrix(rc_vector_t q, rc_matrix_t* R)
 {
-    double q0s, q1s, q2s, q3s;
+    double s,xs,ys,zs,wx,wy,wz,xx,xy,xz,yy,yz,zz;
+
     // sanity checks
     if(unlikely(!q.initialized)){
         fprintf(stderr, "ERROR in rc_quaternion_to_rotation_matrix, vector uninitialized\n");
@@ -456,26 +457,280 @@ int rc_quaternion_to_rotation_matrix(rc_vector_t q, rc_matrix_t* m)
         fprintf(stderr, "ERROR in rc_quaternion_to_rotation_matrix, expected vector of length 4\n");
         return -1;
     }
-    if(unlikely(rc_matrix_alloc(m,3,3))){
+    if(unlikely(rc_matrix_alloc(R,3,3))){
         fprintf(stderr, "ERROR in rc_quaternion_to_rotation_matrix, failed to alloc matrix\n");
         return -1;
     }
-    // compute squares which will be used multiple times
-    q0s = q.d[0]*q.d[0];
-    q1s = q.d[1]*q.d[1];
-    q2s = q.d[2]*q.d[2];
-    q3s = q.d[3]*q.d[3];
-    // diagonal entries
-    m->d[0][0] = q0s+q1s-q2s-q3s;
-    m->d[1][1] = q0s-q1s+q2s-q3s;
-    m->d[2][2] = q0s-q1s-q2s+q3s;
-    // upper triangle
-    m->d[0][1] = 2.0 * (q.d[1]*q.d[2] - q.d[0]*q.d[3]);
-    m->d[0][2] = 2.0 * (q.d[1]*q.d[3] + q.d[0]*q.d[2]);
-    m->d[1][2] = 2.0 * (q.d[2]*q.d[3] - q.d[0]*q.d[1]);
-    // lower triangle
-    m->d[1][0] = 2.0 * (q.d[1]*q.d[2] + q.d[0]*q.d[3]);
-    m->d[2][0] = 2.0 * (q.d[1]*q.d[3] - q.d[0]*q.d[2]);
-    m->d[2][1] = 2.0 * (q.d[2]*q.d[3] + q.d[0]*q.d[1]);
+
+    // algorithm courtesy of "Advanced Animation and Rendering Techniques, theory
+    // and practice" by Alan and Mark Watt.
+    s = 2.0/(q.d[0]*q.d[0] + q.d[1]*q.d[1] + q.d[2]*q.d[2] + q.d[3]*q.d[3]);
+
+    // compute intermediate variables which will be used multiple times
+    xs=q.d[1]*s; ys=q.d[2]*s; zs=q.d[3]*s;
+    wx=q.d[0]*xs; wy=q.d[0]*ys; wz=q.d[0]*zs;
+    xx=q.d[1]*xs; xy=q.d[1]*ys; xz=q.d[1]*zs;
+    yy=q.d[2]*ys; yz=q.d[2]*zs; zz=q.d[3]*zs;
+
+    R->d[0][0] = 1.0 - (yy + zz);
+    R->d[0][1] = xy + wz;;
+    R->d[0][2] = xz - wy;;
+
+    R->d[1][0] = xy - wz;
+    R->d[1][1] = 1.0 - (xx + zz);
+    R->d[1][2] = yz + wx;
+
+    R->d[2][0] = xz + wy;
+    R->d[2][1] = yz - wx;
+    R->d[2][2] = 1.0 - (xx + yy);
+
     return 0;
 }
+
+
+
+int rc_rotation_to_quaternion(rc_matrix_t R, rc_vector_t* q)
+{
+    double t,s;
+    double trace = R.d[0][0] + R.d[1][1] + R.d[2][2];
+
+    // sanity checks
+    if(unlikely(!R.initialized)){
+        fprintf(stderr, "ERROR in rc_rotation_to_quaternion, matrix R uninitialized\n");
+        return -1;
+    }
+    if(unlikely(R.rows!=3 || R.cols!=3)){
+        fprintf(stderr, "ERROR in rc_rotation_to_quaternion, R should be 3x3\n");
+        return -1;
+    }
+    if(unlikely(rc_vector_alloc(q,4))){
+        fprintf(stderr, "ERROR in rc_rotation_to_quaternion, failed to alloc vector q\n");
+        return -1;
+    }
+
+    // NEEDS CHECKING
+    if(trace > 0.0){
+        s = sqrt(trace + 1.0);
+        q->d[0] = 0.5 * s;
+        s = 0.5 / s;
+        q->d[1] = (R.d[1][2] - R.d[2][1]) * s;
+        q->d[2] = (R.d[2][0] - R.d[0][2]) * s;
+        q->d[3] = (R.d[0][1] - R.d[1][0]) * s;
+    }
+
+    // algorithm courtesy of Mike Day
+    // https://d3cw3dd2w32x2b.cloudfront.net/wp-content/uploads/2015/01/matrix-to-quat.pdf
+    if (R.d[2][2] < 0){
+        if(R.d[0][0] >R.d[1][1]){
+            t= 1 + R.d[0][0] - R.d[1][1] - R.d[2][2];
+            s = (0.5 / sqrt(t));
+            q->d[0] = (R.d[1][2] - R.d[2][1]) * s;
+            q->d[1] = t*s;
+            q->d[2] = (R.d[0][1] + R.d[1][0]) * s;
+            q->d[3] = (R.d[2][0] + R.d[0][2]) * s;
+        }else{
+            t= 1 - R.d[0][0] + R.d[1][1] - R.d[2][2];
+            s = (0.5 / sqrt(t));
+            q->d[0] = (R.d[2][0] - R.d[0][2]) * s;
+            q->d[1] = (R.d[0][1] + R.d[1][0]) * s;
+            q->d[2] = t*s;
+            q->d[3] = (R.d[1][2] + R.d[2][1]) * s;
+        }
+    }else{
+        if(R.d[0][0] < -R.d[1][1]){
+            t= 1 - R.d[0][0] - R.d[1][1] + R.d[2][2];
+            s = (0.5 / sqrt(t));
+            q->d[0] = (R.d[0][1] - R.d[1][0]) * s;
+            q->d[1] = (R.d[2][0] + R.d[0][2]) * s;
+            q->d[2] = (R.d[1][2] + R.d[2][1]) * s;
+            q->d[3] = t*s;
+        }else{
+            t= 1 + R.d[0][0] + R.d[1][1] + R.d[2][2];
+            s = (0.5 / sqrt(t));
+            q->d[0] = t*s;
+            q->d[1] = (R.d[1][2] - R.d[2][1]) * s;
+            q->d[2] = (R.d[2][0] - R.d[0][2]) * s;
+            q->d[3] = (R.d[0][1] - R.d[1][0]) * s;
+        }
+    }
+    return 0;
+}
+
+
+int rc_quaternion_slerp(rc_vector_t q1, rc_vector_t q2, double t, rc_vector_t* out)
+{
+    // sanity checks
+    if(unlikely(!q1.initialized || !q2.initialized)){
+        fprintf(stderr, "ERROR in rc_quaternion_slerp, vector uninitialized\n");
+        return -1;
+    }
+    if(unlikely(q1.len!=4 || q2.len!=4)){
+        fprintf(stderr, "ERROR in rc_quaternion_slerp, expected vector of length 4\n");
+        return -1;
+    }
+    if(unlikely(rc_vector_alloc(out,4))){
+        fprintf(stderr, "ERROR in rc_quaternion_slerp, failed to alloc vector out\n");
+        return -1;
+    }
+
+    // algorithm courtesy of "Advanced Animation and Rendering Techniques, theory
+    // and practice" by Alan and Mark Watt.
+    int i;
+    double omega,cosom,sinom,sclp,sclq;
+    cosom = (q1.d[0]*q2.d[0])+(q1.d[1]*q2.d[1])+(q1.d[2]*q2.d[2])+(q1.d[3]*q2.d[3]);
+
+    if((1.0+cosom)>0.00001){
+        if((1.0-cosom)>0.00001){
+            omega = acos(cosom);
+            sinom = sin(omega);
+            sclp = sin((1.0-t)*omega) / sinom;
+            sclq = sin(t*omega) / sinom;
+        }
+        else{
+            sclp = 1.0 - t;
+            sclq = t;
+        }
+        for(i=0;i<4;i++) out->d[i] = (sclp*q1.d[i]) + (sclq*q2.d[i]);
+    }
+    else{
+        out->d[0] =  q1.d[3];
+        out->d[1] = -q1.d[2];
+        out->d[2] =  q1.d[1];
+        out->d[3] = -q1.d[0];
+        sclp = sin((1.0-t)*M_PI_2);
+        sclq = sin(t*M_PI_2);
+        for(i=1;i<4;i++) out->d[i] = (sclp*q1.d[i]) + (sclq*out->d[i]);
+    }
+    return 0;
+}
+
+
+int rc_axis_angle_to_rotation_matrix(rc_vector_t axis, double angle, rc_matrix_t* R)
+{
+    // sanity checks
+    if(unlikely(!axis.initialized)){
+        fprintf(stderr, "ERROR in rc_axis_angle_to_rotation_matrix, axis vector uninitialized\n");
+        return -1;
+    }
+    if(unlikely(axis.len!=3)){
+        fprintf(stderr, "ERROR in rc_axis_angle_to_rotation_matrix, expected vector of length 3\n");
+        return -1;
+    }
+    if(unlikely(rc_matrix_alloc(R,3,3))){
+        fprintf(stderr, "ERROR in rc_axis_angle_to_rotation_matrix, failed to alloc matrix for result\n");
+        return -1;
+    }
+
+
+    double s = sin(angle);
+    double c = cos(angle);
+    double omcos = 1.0-c; // "one minus cos"
+    double axis_norm = rc_vector_norm(axis,2.0);
+
+    if(fabs(axis_norm)<0.00001){
+        fprintf(stderr,"ERROR in rc_axis_angle_to_rotation_matrix, axis vector must have nonzero length\n");
+        return -1;
+    }
+
+    double x = axis.d[0]/axis_norm;
+    double y = axis.d[1]/axis_norm;
+    double z = axis.d[2]/axis_norm;
+
+    R->d[0][0] = c + (x*x*omcos);
+    R->d[0][1] = (x*y*omcos) - (z*s);
+    R->d[0][2] = (x*z*omcos) + (y*s);
+
+    R->d[1][0] = (x*y*omcos) + (z*s);
+    R->d[1][1] = c + (y*y*omcos);
+    R->d[1][2] = (y*z*omcos) - (x*s);
+
+    R->d[2][0] = (x*z*omcos) - (y*s);
+    R->d[2][1] = (y*z*omcos) + (x*s);
+    R->d[2][2] = c + (z*z*omcos);
+
+    return 0;
+}
+
+
+
+
+int rc_rotation_to_tait_bryan(rc_matrix_t R, double* roll, double* pitch, double* yaw)
+{
+    // sanity checks
+    if(unlikely(!R.initialized)){
+        fprintf(stderr, "ERROR in rc_rotation_to_tait_bryan, matrix R uninitialized\n");
+        return -1;
+    }
+    if(unlikely(R.rows!=3 || R.cols!=3)){
+        fprintf(stderr, "ERROR in rc_rotation_to_tait_bryan, R should be 3x3\n");
+        return -1;
+    }
+
+    *roll  = atan2(R.d[2][1], R.d[2][2]);
+    *pitch = asin(-R.d[2][0]);
+    *yaw   = atan2(R.d[1][0], R.d[0][0]);
+
+    if(fabs(*pitch - M_PI_2) < 0.001){
+        *roll = 0.0;
+        *pitch = atan2(R.d[1][2], R.d[0][2]);
+    }
+    else if(fabs(*pitch + M_PI_2) < 0.001) {
+        *roll = 0.0;
+        *pitch = atan2(-R.d[1][2], -R.d[0][2]);
+    }
+    return 0;
+}
+
+int rc_rotation_matrix_from_tait_bryan(double roll, double pitch, double yaw, rc_matrix_t* R)
+{
+    // sanity checks
+    if(unlikely(rc_matrix_alloc(R,3,3))){
+        fprintf(stderr, "ERROR in rc_rotation_matrix_from_tait_bryan, failed to alloc matrix for result\n");
+        return -1;
+    }
+
+    double c1 = cos(yaw);
+    double s1 = sin(yaw);
+    double c2 = cos(pitch);
+    double s2 = sin(pitch);
+    double c3 = cos(roll);
+    double s3 = sin(roll);
+
+    R->d[0][0] = c1*c2;
+    R->d[0][1] = (c1*s2*s3)-(c3*s1);
+    R->d[0][2] = (s1*s3)+(c1*c3*s2);
+
+    R->d[1][0] = c2*s1;
+    R->d[1][1] = (c1*c3)+(s1*s2*s3);
+    R->d[1][2] = (c3*s1*s2)-(c1*s3);
+
+    R->d[2][0] = -s2;
+    R->d[2][1] = c2*s3;
+    R->d[2][2] = c2*c3;
+
+    return 0;
+}
+
+int rc_rotation_matrix_from_yaw(double yaw, rc_matrix_t* R)
+{
+    // sanity checks
+    if(unlikely(rc_matrix_alloc(R,3,3))){
+        fprintf(stderr, "ERROR in rc_rotation_matrix_from_yaw, failed to alloc matrix for result\n");
+        return -1;
+    }
+
+    double s = sin(yaw);
+    double c = cos(yaw);
+    R->d[0][0] =  c;
+    R->d[0][1] = -s;
+    R->d[0][2] =  0;
+    R->d[1][0] =  s;
+    R->d[1][1] =  c;
+    R->d[1][2] =  0;
+    R->d[2][0] =  0;
+    R->d[2][1] =  0;
+    R->d[2][2] =  1;
+
+    return 0;
+}
+
