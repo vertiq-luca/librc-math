@@ -1,6 +1,6 @@
 #!/bin/bash
 ################################################################################
-# Copyright 2019 ModalAI Inc.
+# Copyright 2020 ModalAI Inc.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions are met:
@@ -32,14 +32,18 @@
 # POSSIBILITY OF SUCH DAMAGE.
 ################################################################################
 
-set -e # exit on error
 
-sudo make clean
+sudo rm -rf build/
+sudo rm -rf build32/
+sudo rm -rf build64/
+sudo rm -rf ipk/data/
 
-# clean remnants of ipk generation
-sudo rm -rf ipk/data ipk/control.tar.gz ipk/data.tar.gz
-rm -rf *.ipk
-
+sudo rm -rf ipk/control.tar.gz
+sudo rm -rf ipk/data.tar.gz
+sudo rm -rf *.ipk
+sudo rm -rf *.deb
+sudo rm -rf .bash_history
 
 echo ""
-echo DONE
+echo "DONE CLEANING"
+

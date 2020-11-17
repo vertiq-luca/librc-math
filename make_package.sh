@@ -51,8 +51,9 @@ echo "version Number: " $VERSION
 ################################################################################
 # start with a little cleanup to remove old files
 ################################################################################
-rm -rf $DATA_DIR
-mkdir -p $DATA_DIR
+sudo rm -rf $DATA_DIR
+mkdir $DATA_DIR
+
 rm -rf ipk/control.tar.gz
 rm -rf ipk/data.tar.gz
 rm -rf $IPK_NAME
@@ -61,9 +62,26 @@ rm -rf $IPK_NAME
 ## copy useful files into data directory
 ################################################################################
 
-# must run as root so files in ipk have correct permissions
-CWD=`pwd`
-sudo make DESTDIR=${CWD}/ipk/data PREFIX=/usr install
+DID_BUILD=false
+
+if [[ -d "build" ]]; then
+	cd build && sudo make DESTDIR=../ipk/data PREFIX=/usr install && cd -
+	DID_BUILD=true
+fi
+if [[ -d "build32" ]]; then
+	cd build32 && sudo make DESTDIR=../ipk/data PREFIX=/usr install && cd -
+	DID_BUILD=true
+fi
+if [[ -d "build64" ]]; then
+	cd build64 && sudo make DESTDIR=../ipk/data PREFIX=/usr install && cd -
+	DID_BUILD=true
+fi
+
+# make sure at least one directory worked
+if [ "$DID_BUILD" = false ]; then
+	echo "neither build/ build32/ or build64/ were found"
+	exit 1
+fi
 
 ################################################################################
 # pack the control, data, and final ipk archives
