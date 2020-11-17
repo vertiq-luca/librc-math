@@ -1,6 +1,6 @@
 #!/bin/bash
 ################################################################################
-# Copyright 2019 ModalAI Inc.
+# Copyright 2020 ModalAI Inc.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions are met:
@@ -32,10 +32,79 @@
 # POSSIBILITY OF SUCH DAMAGE.
 ################################################################################
 
+TOOLCHAIN32="/opt/cross_toolchain/arm-gnueabi-4.9.toolchain.cmake"
+TOOLCHAIN64="/opt/cross_toolchain/aarch64-gnu-4.9.toolchain.cmake"
 
-set -e # exit on error
+print_usage(){
+	echo "                                                                                "
+	echo " Build the current project in one of 4 modes based on build environment."
+	echo " "
+	echo ""
+	echo " Usage:"
+	echo "  ./build.sh native"
+	echo "        Build with the native gcc/g++ compilers."
+	echo ""
+	echo "  ./build.sh 32"
+	echo "        Build with an arm-gnueabi 32-bit cross compiler."
+	echo ""
+	echo "  ./build.sh 64"
+	echo "        Build with an aarch64 64-bit cross compiler."
+	echo ""
+	echo "  ./build.sh both"
+	echo "        Build both 32 and 64-bit binaries."
+	echo ""
+}
 
-make
+
+if ! [ $# -eq 1 ]; then
+	print_usage
+	exit 1
+fi
+
+case "$1" in
+	native)
+		mkdir -p build
+		cd build
+		cmake ../
+		make -j4
+		cd ../
+		;;
+
+	32)
+		mkdir -p build32
+		cd build32
+		cmake -DCMAKE_TOOLCHAIN_FILE=${TOOLCHAIN32} ../
+		make -j4
+		cd ../
+		;;
+
+	64)
+		mkdir -p build64
+		cd build64
+		cmake -DCMAKE_TOOLCHAIN_FILE=${TOOLCHAIN64} ../
+		make -j4
+		cd ../
+		;;
+
+	both)
+		mkdir -p build32
+		cd build32
+		cmake -DCMAKE_TOOLCHAIN_FILE=${TOOLCHAIN32} ../
+		make -j4
+		cd ../
+		mkdir -p build64
+		cd build64
+		cmake -DCMAKE_TOOLCHAIN_FILE=${TOOLCHAIN64} ../
+		make -j4
+		cd ../
+		;;
+	*)
+		print_usage
+		exit 1
+		;;
+esac
 
 echo ""
-echo "DONE"
+echo "DONE BUILDING"
+
+

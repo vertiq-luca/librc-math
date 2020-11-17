@@ -2,11 +2,9 @@ before_script:
   - git clone -q --depth 1 https://gitlab.com/voxl-public/ci-tools.git
 
 include:
-  - project: 'voxl-public/ci-tools' 
-    file: '/pipeline-configs/.build-voxl-emulator.yml'
-  - project: 'voxl-public/ci-tools' 
+  - project: 'voxl-public/ci-tools'
     file: '/pipeline-configs/.deploy-dev.yml'
-  - project: 'voxl-public/ci-tools' 
+  - project: 'voxl-public/ci-tools'
     file: '/pipeline-configs/.deploy-stable.yml'
 
 variables:
@@ -16,3 +14,13 @@ stages:
   - build_stage
   - deploy_stage_dev
   - deploy_stage_stable
+
+build:
+  image: voxl-cross
+  stage: build_stage
+  script:
+    - /bin/bash build.sh both
+    - /bin/bash make_package.sh
+  artifacts:
+    untracked: true
+    expire_in: 2 min

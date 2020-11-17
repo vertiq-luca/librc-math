@@ -1,3 +1,6 @@
+1.1.3
+    * update from make to cmake
+    * build multi-arch now
 1.1.2
     * ci automated builer
 1.1.1
