@@ -6,41 +6,53 @@ This is a fork of github.com/strawsondesign/librobotcontrol which is stripped do
 
 This branch is intended for use on ModalAI VOXL platforms, but it can be built and run on any platform (x86, BeagleBone, RPi, etc).
 
-## Build Instructions for VOXL
+## Build Instructions
 
-1) Prerequisite: voxl-emulator docker image. Follow the instructions here:
+1) prerequisite: your own GCC of choice or the voxl-cross docker image
+
+Follow the instructions here to build and install the voxl-cross docker image:
 
 https://gitlab.com/voxl-public/voxl-docker
 
-2) Launch the voxl-emulator docker image and make sure this project directory is mounted inside the Docker.
+
+2) Launch the voxl-cross docker and make sure this project directory is mounted inside the Docker.
 
 ```bash
-~/git/librc_math$ voxl-docker -i voxl-emulator
-
-bash-4.3$ ls
-CHANGELOG  Makefile   build.sh  examples          ipk      make_ipk.sh
-LICENSE    README.md  clean.sh  install_on_target.sh  library
+~/git/libmodal_json$ voxl-docker -i voxl-cross
+root@silverstone:/home/user#
+root@silverstone:/home/user# ls
+CHANGELOG       LICENSE    build.sh  conf     install_on_voxl.sh  library          readers
+CMakeLists.txt  README.md  clean.sh  example  ipk                 make_package.sh
+root@silverstone:/home/user#
 ```
 
-5) Compile inside the docker
+3) The build script takes one of these 4 options to set the architecture this should build for:
+
+* `./build.sh native` Builds using whatever native gcc lives at /usr/bin/gcc
+* `./build.sh 32`     Builds using the 32-bit (armv7) arm-linux-gnueabi cross-compiler that's in the voxl-cross docker
+* `./build.sh 64`     Builds using the 64-bit (armv8) aarch64-gnu cross-compiler that's in the voxl-cross docker
+* `./build.sh both`   Builds both 32 and 64 cross-compiled binaries. This is what's used to build the VOXL IPK packages
 
 ```bash
-bash-4.3$ ./build.sh
+bash-4.3$ ./build.sh both
 ```
 
-6) Make an ipk package either inside or outside of the docker.
+4) Make an ipk package while still inside the docker.
 
 ```bash
-bash-4.3$ ./make_package.sh
+~/git/libmodal_json$ ./make_ipk.sh
 
 Package Name:  librc_math
-version Number:  1.0.0
-Library Install Complete
-Examples Install complete
-/usr/bin/ar: creating librc_math_1.0.0.ipk
+version Number:  x.x.x
+ar: creating librc_math_x.x.x.ipk
 
 DONE
 ```
+
+This will make a new libmodal_json_x.x.x.ipk file in your working directory. The name and version number came from the ipk/control/control file. If you are updating the package version, edit it there.
+
+It will install whatever was built in the previous step based on your chosen compiler. For the "both" option it will install 32 and 64 bit versions of the lib, one copy of the headers, and just the 64-bit example programs.
+
 
 ## Deploy to VOXL
 
