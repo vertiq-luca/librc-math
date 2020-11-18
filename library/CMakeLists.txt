@@ -10,6 +10,7 @@ target_include_directories(${LIBNAME} PUBLIC include )
 # make the include directory public for install
 file(GLOB LIB_HEADERS include/*.h)
 set_target_properties(${LIBNAME} PROPERTIES PUBLIC_HEADER "${LIB_HEADERS}")
+set_target_properties(${LIBNAME} PROPERTIES SOVERSION 1)
 
 # make sure everything is installed where we want
 # LIB_INSTALL_DIR comes from the parent cmake file
