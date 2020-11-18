@@ -20,3 +20,9 @@ install(
 	RUNTIME			DESTINATION /usr/bin
 	PUBLIC_HEADER	DESTINATION /usr/include
 )
+
+# install the headers manually since they live in a folder in /usr/include
+# and I can't get the PUBLIC_HEADER property to recognize this
+file(GLOB MORE_HEADERS include/rc_math/*.h)
+install( FILES ${MORE_HEADERS} DESTINATION /usr/include/rc_math/)
+
