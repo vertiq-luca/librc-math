@@ -668,9 +668,8 @@ int rc_filter_butterworth_highpass(rc_filter_t* f, int order, double dt, double 
         fprintf(stderr, "ERROR in rc_filter_butterworth_highpass, failed to find butterwoth polynomial\n");
         return -1;
     }
-    // numerator consists of all zeros at the origin
-    rc_vector_zeros(&num,order+1);
-    num.d[0] = 1.0;
+    rc_vector_duplicate(den, &num);
+    num.d[num.len-1] -= 1.0;
 
     if(unlikely(rc_filter_c2d_tustin(f,dt,num,den,wc))){
         fprintf(stderr, "ERROR in rc_filter_butterworth_highpass, failed to c2d_tustin\n");
