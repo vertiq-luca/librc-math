@@ -32,6 +32,9 @@
 # POSSIBILITY OF SUCH DAMAGE.
 ################################################################################
 
+# exit with error immediately on any failure
+set -e
+
 TOOLCHAIN32="/opt/cross_toolchain/arm-gnueabi-4.9.toolchain.cmake"
 TOOLCHAIN64="/opt/cross_toolchain/aarch64-gnu-4.9.toolchain.cmake"
 
