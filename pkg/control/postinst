@@ -1,0 +1,6 @@
+#!/bin/sh
+
+if [ -f /usr/bin/ldconfig ]; then
+	ldconfig
+fi
+

@@ -1,35 +1,11 @@
 #!/bin/bash
 ################################################################################
-# Copyright 2019 ModalAI Inc.
+# Copyright (c) 2021 ModalAI, Inc. All rights reserved.
 #
-# Redistribution and use in source and binary forms, with or without
-# modification, are permitted provided that the following conditions are met:
+# Semi-universal script for making a deb and ipk package. This is shared
+# between the vast majority of VOXL-SDK packages
 #
-# 1. Redistributions of source code must retain the above copyright notice,
-#    this list of conditions and the following disclaimer.
-#
-# 2. Redistributions in binary form must reproduce the above copyright notice,
-#    this list of conditions and the following disclaimer in the documentation
-#    and/or other materials provided with the distribution.
-#
-# 3. Neither the name of the copyright holder nor the names of its contributors
-#    may be used to endorse or promote products derived from this software
-#    without specific prior written permission.
-#
-# 4. The Software is used solely in conjunction with devices provided by
-#    ModalAI Inc.
-#
-# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
-# AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-# IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
-# ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE
-# LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
-# CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
-# SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
-# INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
-# CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
-# ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
-# POSSIBILITY OF SUCH DAMAGE.
+# author: james@modalai.com
 ################################################################################
 
 set -e # exit on error to prevent bad ipk from being generated
@@ -37,12 +13,15 @@ set -e # exit on error to prevent bad ipk from being generated
 ################################################################################
 # variables
 ################################################################################
-VERSION=$(cat ipk/control/control | grep "Version" | cut -d' ' -f 2)
-PACKAGE=$(cat ipk/control/control | grep "Package" | cut -d' ' -f 2)
+VERSION=$(cat pkg/control/control | grep "Version" | cut -d' ' -f 2)
+PACKAGE=$(cat pkg/control/control | grep "Package" | cut -d' ' -f 2)
 IPK_NAME=${PACKAGE}_${VERSION}.ipk
+DEB_NAME=${PACKAGE}_${VERSION}.deb
 
-DATA_DIR=ipk/data
-CONTROL_DIR=ipk/control
+DATA_DIR=pkg/data
+CONTROL_DIR=pkg/control
+IPK_DIR=pkg/IPK
+DEB_DIR=pkg/DEB
 
 echo ""
 echo "Package Name: " $PACKAGE
@@ -51,29 +30,37 @@ echo "version Number: " $VERSION
 ################################################################################
 # start with a little cleanup to remove old files
 ################################################################################
+# remove data directory where 'make install' installed to
 sudo rm -rf $DATA_DIR
-mkdir -p $DATA_DIR
+mkdir $DATA_DIR
 
-rm -rf ipk/control.tar.gz
-rm -rf ipk/data.tar.gz
-rm -rf $IPK_NAME
+# remove ipk and deb packaging folders
+rm -rf $IPK_DIR
+rm -rf $DEB_DIR
+
+# remove old ipk and deb packages
+rm -f *.ipk
+rm -f *.deb
+
 
 ################################################################################
-## copy useful files into data directory
+## install compiled stuff into data directory with 'make install'
+## try this for all 3 possible build folders, some packages are multi-arch
+## so both 32 and 64 need installing to pkg directory.
 ################################################################################
 
 DID_BUILD=false
 
 if [[ -d "build" ]]; then
-	cd build && sudo make DESTDIR=../ipk/data PREFIX=/usr install && cd -
+	cd build && sudo make DESTDIR=../${DATA_DIR} PREFIX=/usr install && cd -
 	DID_BUILD=true
 fi
 if [[ -d "build32" ]]; then
-	cd build32 && sudo make DESTDIR=../ipk/data PREFIX=/usr install && cd -
+	cd build32 && sudo make DESTDIR=../${DATA_DIR} PREFIX=/usr install && cd -
 	DID_BUILD=true
 fi
 if [[ -d "build64" ]]; then
-	cd build64 && sudo make DESTDIR=../ipk/data PREFIX=/usr install && cd -
+	cd build64 && sudo make DESTDIR=../${DATA_DIR} PREFIX=/usr install && cd -
 	DID_BUILD=true
 fi
 
@@ -83,19 +70,61 @@ if [ "$DID_BUILD" = false ]; then
 	exit 1
 fi
 
+
 ################################################################################
-# pack the control, data, and final ipk archives
+## install standard stuff common across ModalAI projects if they exist
 ################################################################################
 
+if [ -d "services" ]; then
+	sudo mkdir -p $DATA_DIR/etc/systemd/system/
+	sudo cp services/* $DATA_DIR/etc/systemd/system/
+fi
+
+if [ -d "scripts" ]; then
+	sudo mkdir -p $DATA_DIR/usr/bin/
+	sudo chmod +x scripts/*
+	sudo cp scripts/* $DATA_DIR/usr/bin/
+fi
+
+if [ -d "bash_completions" ]; then
+	sudo mkdir -p $DATA_DIR/usr/share/bash-completion/completions
+	sudo cp bash_completions/* $DATA_DIR/usr/share/bash-completion/completions
+fi
+
+
+################################################################################
+# make an IPK
+################################################################################
+
+## make a folder dedicated to IPK building and make the required version file
+mkdir $IPK_DIR
+echo "2.0" > $IPK_DIR/debian-binary
+
+## add tar archives of data and control for the IPK package
 cd $CONTROL_DIR/
-tar --create --gzip -f ../control.tar.gz *
+tar --create --gzip -f ../../$IPK_DIR/control.tar.gz *
 cd ../../
-
 cd $DATA_DIR/
-tar --create --gzip -f ../data.tar.gz *
+tar --create --gzip -f ../../$IPK_DIR/data.tar.gz *
 cd ../../
 
-ar -r $IPK_NAME ipk/control.tar.gz ipk/data.tar.gz ipk/debian-binary
+## use ar to make the final .ipk and place it in the repository root
+ar -r $IPK_NAME $IPK_DIR/control.tar.gz $IPK_DIR/data.tar.gz $IPK_DIR/debian-binary
+
+
+################################################################################
+# make a DEB package
+################################################################################
+
+## make a folder dedicated to IPK building and copy the requires debian-binary file in
+mkdir $DEB_DIR
+
+## copy the control stuff in
+cp -rf $CONTROL_DIR/ $DEB_DIR/DEBIAN
+cp -rf $DATA_DIR/*   $DEB_DIR
+
+dpkg-deb --build ${DEB_DIR} ${DEB_NAME}
+
 
 echo ""
 echo DONE

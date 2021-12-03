@@ -1,6 +1,6 @@
 #!/bin/bash
 ################################################################################
-# Copyright 2020 ModalAI Inc.
+# Copyright 2021 ModalAI Inc.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions are met:
@@ -69,7 +69,7 @@ case "$1" in
 		mkdir -p build
 		cd build
 		cmake ../
-		make -j4
+		make -j$(nproc)
 		cd ../
 		;;
 
@@ -77,7 +77,7 @@ case "$1" in
 		mkdir -p build32
 		cd build32
 		cmake -DCMAKE_TOOLCHAIN_FILE=${TOOLCHAIN32} ../
-		make -j4
+		make -j$(nproc)
 		cd ../
 		;;
 
@@ -85,7 +85,7 @@ case "$1" in
 		mkdir -p build64
 		cd build64
 		cmake -DCMAKE_TOOLCHAIN_FILE=${TOOLCHAIN64} ../
-		make -j4
+		make -j$(nproc)
 		cd ../
 		;;
 
@@ -93,12 +93,12 @@ case "$1" in
 		mkdir -p build32
 		cd build32
 		cmake -DCMAKE_TOOLCHAIN_FILE=${TOOLCHAIN32} ../
-		make -j4
+		make -j$(nproc)
 		cd ../
 		mkdir -p build64
 		cd build64
 		cmake -DCMAKE_TOOLCHAIN_FILE=${TOOLCHAIN64} ../
-		make -j4
+		make -j$(nproc)
 		cd ../
 		;;
 	*)

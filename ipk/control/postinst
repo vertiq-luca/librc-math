@@ -1,6 +1,0 @@
-#!/bin/sh
-
-echo ""
-echo "done installing librc_math"
-echo ""
-
