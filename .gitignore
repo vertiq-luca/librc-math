@@ -1,7 +1,11 @@
 .bash_history
+*.core
 build
 build32
 build64
 *.ipk
-*.core
 *.deb
+pkg/data
+pkg/DEB
+pkg/IPK
+
