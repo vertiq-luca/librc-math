@@ -5,10 +5,35 @@
 # Semi-universal script for making a deb and ipk package. This is shared
 # between the vast majority of VOXL-SDK packages
 #
+# Add the 'timestamp' argument to add a date-timestamp suffix to the deb package
+# version. This is used by CI for making nightly and development builds.
+#
 # author: james@modalai.com
 ################################################################################
 
 set -e # exit on error to prevent bad ipk from being generated
+
+################################################################################
+# Check arguments
+################################################################################
+
+USETIMESTAMP=false
+
+## convert argument to lower case for robustness
+arg=$(echo "$1" | tr '[:upper:]' '[:lower:]')
+case ${arg} in
+	"")
+		echo "Making Normal Package"
+		;;
+	"-t"|"timestamp"|"--timestamp")
+		echo "using timestamp suffix"
+		USETIMESTAMP=true
+		;;
+	*)
+		echo "invalid option"
+		exit 1
+esac
+
 
 ################################################################################
 # variables
@@ -96,6 +121,8 @@ fi
 # make an IPK
 ################################################################################
 
+echo "starting building $IPK_NAME"
+
 ## make a folder dedicated to IPK building and make the required version file
 mkdir $IPK_DIR
 echo "2.0" > $IPK_DIR/debian-binary
@@ -116,6 +143,8 @@ ar -r $IPK_NAME $IPK_DIR/control.tar.gz $IPK_DIR/data.tar.gz $IPK_DIR/debian-bin
 # make a DEB package
 ################################################################################
 
+echo "starting building Debian Package"
+
 ## make a folder dedicated to IPK building and copy the requires debian-binary file in
 mkdir $DEB_DIR
 
@@ -123,8 +152,18 @@ mkdir $DEB_DIR
 cp -rf $CONTROL_DIR/ $DEB_DIR/DEBIAN
 cp -rf $DATA_DIR/*   $DEB_DIR
 
+## update version with timestamp if enabled
+if $USETIMESTAMP; then
+	dts=$(date +"%Y%m%d%H%M")
+	sed -E -i "s/Version.*/&-$dts/" $DEB_DIR/DEBIAN/control
+	VERSION="${VERSION}-${dts}"
+	DEB_NAME=${PACKAGE}_${VERSION}.deb
+	echo "new version with timestamp: $VERSION"
+fi
+
+
 dpkg-deb --build ${DEB_DIR} ${DEB_NAME}
 
 
 echo ""
-echo DONE
+echo "DONE"
