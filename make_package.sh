@@ -1,6 +1,6 @@
 #!/bin/bash
 ################################################################################
-# Copyright (c) 2021 ModalAI, Inc. All rights reserved.
+# Copyright (c) 2022 ModalAI, Inc. All rights reserved.
 #
 # Semi-universal script for making a deb and ipk package. This is shared
 # between the vast majority of VOXL-SDK packages
@@ -23,7 +23,7 @@ USETIMESTAMP=false
 arg=$(echo "$1" | tr '[:upper:]' '[:lower:]')
 case ${arg} in
 	"")
-		echo "Making Normal Package"
+		#echo "Making Normal Package"
 		;;
 	"-t"|"timestamp"|"--timestamp")
 		echo "using timestamp suffix"
@@ -48,7 +48,6 @@ CONTROL_DIR=pkg/control
 IPK_DIR=pkg/IPK
 DEB_DIR=pkg/DEB
 
-echo ""
 echo "Package Name: " $PACKAGE
 echo "version Number: " $VERSION
 
@@ -90,7 +89,7 @@ if [[ -d "build64" ]]; then
 fi
 
 # make sure at least one directory worked
-if [ "$DID_BUILD" = false ]; then
+if [ "$DID_BUILD" = false ] && ! [ -f "build.sh" ]; then
 	echo "neither build/ build32/ or build64/ were found"
 	exit 1
 fi
@@ -116,6 +115,14 @@ if [ -d "bash_completions" ]; then
 	sudo cp bash_completions/* $DATA_DIR/usr/share/bash-completion/completions
 fi
 
+if [ -d "misc_files" ]; then
+	sudo cp -R misc_files/* $DATA_DIR/
+fi
+
+if [ -d "bash_profile" ]; then
+	sudo mkdir -p ${DATA_DIR}/home/root/.profile.d/
+	sudo cp -R bash_profile/* ${DATA_DIR}/home/root/.profile.d/
+fi
 
 ################################################################################
 # make an IPK
@@ -164,6 +171,4 @@ fi
 
 dpkg-deb --build ${DEB_DIR} ${DEB_NAME}
 
-
-echo ""
 echo "DONE"
