@@ -54,8 +54,8 @@ static uint64_t __nanos_thread_time(void)
 int main(int argc, char *argv[])
 {
     int dim = 0;
-    int c,diff,mflops;
-    uint64_t t1, t2, flops;
+    int c, diff;
+    uint64_t t1, t2;
     rc_vector_t b = RC_VECTOR_INITIALIZER;
     rc_vector_t x = RC_VECTOR_INITIALIZER;
     rc_matrix_t A =  RC_MATRIX_INITIALIZER;
@@ -113,9 +113,7 @@ int main(int argc, char *argv[])
         }
     }
 
-    // set clock speed to 1000mhz to make sure scaling doesn't effect results
-    //rc_set_cpu_freq(FREQ_1000MHZ);
-    printf("Starting\n");
+    printf("Starting single-threaded test\n");
 
     // create a random nxn matrix for later use
     t1 = TIMER;
@@ -139,12 +137,6 @@ int main(int argc, char *argv[])
     t2 = TIMER;
     diff = (int)((t2-t1-TIMER_DELAY)/(uint64_t)1000);
     printf("%10dus Time to multiply matrices\n", diff);
-
-    // calculate floating pointer operations per second, both multiplication
-    // and addition count as operations, hence multiply by 2
-    flops = ((uint64_t)2*dim*dim*dim*1000000000)/(diff);
-    mflops = flops/(uint64_t)1000000;
-    printf("%10d MFLOPS multiplying matrices\n", mflops);
 
     // find determinant
     t1 = TIMER;
@@ -186,6 +178,24 @@ int main(int argc, char *argv[])
     t2 = TIMER;
     diff = (int)((t2-t1-TIMER_DELAY)/(uint64_t)1000);
     printf("%10dus Time to solve linear system\n", diff);
+
+    // Multiply matrices 1000 times
+    rc_matrix_alloc(&B,dim,dim);
+    rc_matrix_random(&A,dim,dim);
+    rc_matrix_random(&AA,dim,dim);
+    t1 = TIMER;
+    for (int i=0;i<1000;i++){
+        rc_matrix_multiply(A, AA, &B);
+    }
+    t2 = TIMER;
+    diff = (int)((t2-t1-TIMER_DELAY)/(uint64_t)1000);
+    printf("%10dus Time to multiply matrices 1000 times\n", diff);
+
+    // calculate floating pointer operations per second, both multiplication
+    // and addition count as operations, hence multiply by 2
+    uint64_t flops = ((uint64_t)2*dim*dim*dim*1000000000)/(diff);
+    double gflops = (double)flops/1000000000.0;
+    printf("     %7.3f GFLOPS multiplying matrices 1000 times\n", gflops);
 
     printf("DONE\n");
     //rc_set_cpu_freq(FREQ_ONDEMAND);
