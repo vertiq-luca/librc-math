@@ -1,9 +1,233 @@
-before_script:
-    - git clone -q --depth 1 https://gitlab.com/voxl-public/utilities/ci-tools
+################################################################################
+# This file is not yet complete, but is a growing list of CI build stages
+# Currently Just contains voxl-cross for 865 and 820
+################################################################################
 
-include:
-  - project: 'voxl-public/utilities/ci-tools'
-    file: '/pipeline-configs/all.yml'
+################################################################################
+# voxl-cross 865
+################################################################################
+
+# normal builds
+build_cross_865_dev:
+  image: voxl-cross
+  stage: build_cross_865_dev
+  only:
+    refs:
+      - dev
+  except:
+    - schedules
+  script:
+    - /bin/bash ci-tools/scripts/check-build-deps.sh dev
+    - /bin/bash ci-tools/scripts/check-build-script.sh 865
+    - /bin/bash make_package.sh deb timestamp
+  artifacts:
+    untracked: true
+    expire_in: 20 min
+
+
+# build_cross_865_stable:
+#   image: voxl-cross
+#   stage: build_cross_865_stable
+#   only:
+#     refs:
+#       - tags
+#       - master
+#   except:
+#     - schedules
+#   script:
+#     - /bin/bash ci-tools/scripts/check-build-deps.sh stable
+#     - /bin/bash ci-tools/scripts/check-build-script.sh 865
+#     - /bin/bash make_package.sh deb
+#   artifacts:
+#     untracked: true
+#     expire_in: 20 min
+
+
+# ## nightly builds
+# nightly_cross_865_dev:
+#   image: voxl-cross
+#   stage: nightly_cross_865_dev
+#   only:
+#     - schedules
+#   except:
+#     refs:
+#       - master
+#   script:
+#     - /bin/bash ci-tools/scripts/check-build-deps.sh dev
+#     - /bin/bash ci-tools/scripts/check-build-script.sh 865
+#     - /bin/bash make_package.sh deb
+#   artifacts:
+#     untracked: true
+#     expire_in: 20 min
+
+
+# nightly_cross_865_stable:
+#   image: voxl-cross
+#   stage: nightly_cross_865_stable
+#   only:
+#     - schedules
+#   except:
+#     refs:
+#       - dev
+#   script:
+#     - /bin/bash ci-tools/scripts/check-build-deps.sh stable
+#     - /bin/bash ci-tools/scripts/check-build-script.sh 865
+#     - /bin/bash make_package.sh deb
+#   artifacts:
+#     untracked: true
+#     expire_in: 20 min
+
+
+# deploy
+deploy_cross_865_dev:
+  image: google/cloud-sdk:latest
+  stage: deploy_cross_865_dev
+  except:
+    - schedules
+  dependencies:
+  - build_cross_865_dev
+  only:
+    refs:
+      - dev
+  variables:
+    OPKG_CHANNEL: dev-deb
+  script:
+    - /bin/bash ci-tools/scripts/deploy-opkg-repo.sh
+
+
+# deploy_cross_865_stable:
+#   image: google/cloud-sdk:latest
+#   stage: deploy_cross_865_stable
+#   except:
+#     - schedules
+#   dependencies:
+#   - build_cross_865_stable
+#   only:
+#     refs:
+#       - tags
+#       - master
+#     variables:
+#       - $CI_COMMIT_TAG =~ /^v[0-9]{1,3}.[0-9]{1,3}.[0-9]{1,3}(-[0-9])?$/
+#   variables:
+#     OPKG_CHANNEL: 865-sdk-1.0
+#   script:
+#     - /bin/bash ci-tools/scripts/deploy-opkg-repo.sh
+
+
+
+
+
+
+################################################################################
+# voxl-cross 820
+################################################################################
+
+# normal builds
+build_cross_820_dev:
+  image: voxl-cross
+  stage: build_cross_820_dev
+  only:
+    refs:
+      - dev
+  except:
+    - schedules
+  script:
+    - /bin/bash ci-tools/scripts/check-build-deps.sh dev
+    - /bin/bash ci-tools/scripts/check-build-script.sh 820
+    - /bin/bash make_package.sh ipk
+  artifacts:
+    untracked: true
+    expire_in: 20 min
+
+
+# build_cross_820_stable:
+#   image: voxl-cross
+#   stage: build_cross_820_stable
+#   only:
+#     refs:
+#       - tags
+#       - master
+#   except:
+#     - schedules
+#   script:
+#     - /bin/bash ci-tools/scripts/check-build-deps.sh stable
+#     - /bin/bash ci-tools/scripts/check-build-script.sh 820
+#     - /bin/bash make_package.sh ipk
+#   artifacts:
+#     untracked: true
+#     expire_in: 20 min
+
+
+# ## nightly builds
+# nightly_cross_820_dev:
+#   image: voxl-cross
+#   stage: nightly_cross_820_dev
+#   only:
+#     - schedules
+#   except:
+#     refs:
+#       - master
+#   script:
+#     - /bin/bash ci-tools/scripts/check-build-deps.sh dev
+#     - /bin/bash ci-tools/scripts/check-build-script.sh 820
+#     - /bin/bash make_package.sh ipk
+#   artifacts:
+#     untracked: true
+#     expire_in: 20 min
+
+
+# nightly_cross_820_stable:
+#   image: voxl-cross
+#   stage: nightly_cross_820_stable
+#   only:
+#     - schedules
+#   except:
+#     refs:
+#       - dev
+#   script:
+#     - /bin/bash ci-tools/scripts/check-build-deps.sh stable
+#     - /bin/bash ci-tools/scripts/check-build-script.sh 820
+#     - /bin/bash make_package.sh ipk
+#   artifacts:
+#     untracked: true
+#     expire_in: 20 min
+
+
+# deploy
+deploy_cross_820_dev:
+  image: google/cloud-sdk:latest
+  stage: deploy_cross_820_dev
+  except:
+    - schedules
+  dependencies:
+  - build_cross_820_dev
+  only:
+    refs:
+      - dev
+  variables:
+    OPKG_CHANNEL: dev
+  script:
+    - /bin/bash ci-tools/scripts/deploy-opkg-repo.sh
+
+
+# deploy_cross_820_stable:
+#   image: google/cloud-sdk:latest
+#   stage: deploy_cross_820_stable
+#   except:
+#     - schedules
+#   dependencies:
+#   - build_cross_820_stable
+#   only:
+#     refs:
+#       - tags
+#       - master
+#     variables:
+#       - $CI_COMMIT_TAG =~ /^v[0-9]{1,3}.[0-9]{1,3}.[0-9]{1,3}(-[0-9])?$/
+#   variables:
+#     OPKG_CHANNEL: stable
+#   script:
+#     - /bin/bash ci-tools/scripts/deploy-opkg-repo.sh
+
 
 
 stages:
