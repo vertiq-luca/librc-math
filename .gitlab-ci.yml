@@ -165,23 +165,23 @@ build_cross_820_dev:
 #     expire_in: 20 min
 
 
-# ## nightly builds
-# nightly_cross_820_dev:
-#   image: voxl-cross
-#   stage: nightly_cross_820_dev
-#   only:
-#     - schedules
-#   except:
-#     refs:
-#       - master
-#   script:
-#     - /bin/bash clean.sh
-#     - /bin/bash ci-tools/scripts/check-build-deps.sh dev
-#     - /bin/bash ci-tools/scripts/check-build-script.sh 820
-#     - /bin/bash make_package.sh ipk
-#   artifacts:
-#     untracked: true
-#     expire_in: 20 min
+## nightly builds
+nightly_cross_820_dev:
+  image: voxl-cross
+  stage: nightly_cross_820_dev
+  only:
+    - schedules
+  except:
+    refs:
+      - master
+  script:
+    - /bin/bash clean.sh
+    - /bin/bash ci-tools/scripts/check-build-deps.sh dev
+    - /bin/bash ci-tools/scripts/check-build-script.sh 820
+    - /bin/bash make_package.sh ipk
+  artifacts:
+    untracked: true
+    expire_in: 20 min
 
 
 # nightly_cross_820_stable:
@@ -240,6 +240,7 @@ deploy_cross_820_dev:
 
 
 stages:
+    - nightly_cross_820_dev
     - build_cross_820_dev
     - deploy_cross_820_dev
     - build_cross_865_dev
