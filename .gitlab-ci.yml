@@ -1,11 +1,12 @@
-################################################################################
-# This file is not yet complete, but is a growing list of CI build stages
-# Currently Just contains voxl-cross for 865 and 820
-################################################################################
+
+before_script:
+    - git clone -q --depth 1 https://gitlab.com/voxl-public/utilities/ci-tools
+
 
 ################################################################################
 # voxl-cross 865
 ################################################################################
+
 
 # normal builds
 build_cross_865_dev:
