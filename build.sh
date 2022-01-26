@@ -1,29 +1,33 @@
 #!/bin/bash
 
-TOOLCHAIN32="/opt/cross_toolchain/arm-gnueabi-4.9.toolchain.cmake"
-TOOLCHAIN64="/opt/cross_toolchain/aarch64-gnu-4.9.toolchain.cmake"
+# TOOLCHAIN32="/opt/cross_toolchain/arm-gnueabi-4.9.toolchain.cmake"
+# TOOLCHAIN64="/opt/cross_toolchain/aarch64-gnu-4.9.toolchain.cmake"
+# TOOLCHAIN865="/opt/cross_toolchain/aarch64-gnu-8.toolchain.cmake"
+TOOLCHAIN32="arm-gnueabi-4.9.toolchain.cmake"
+TOOLCHAIN64="aarch64-gnu-4.9.toolchain.cmake"
+TOOLCHAIN865="aarch64-gnu-8.toolchain.cmake"
 
 # placeholder in case more needs to be added later
 EXTRA_OPTS=""
-MODE="both" ## default mode when no argument is given
+MODE="" ## default mode when no argument is given
 
 print_usage(){
 	echo "                                                                                "
 	echo " Build the current project in one of 4 modes based on build environment."
-	echo " The default behavior is to build BOTH 32 and 64-bit binaries."
 	echo ""
 	echo " Usage:"
-	echo "  ./build.sh"
-	echo "        Build for the default package architecture."
 	echo ""
-	echo "  ./build.sh both"
+	echo "  ./build.sh 820"
 	echo "        Build both 32 and 64-bit binaries."
 	echo ""
 	echo "  ./build.sh 32"
-	echo "        Build with an arm-gnueabi 32-bit cross compiler."
+	echo "        Build with an arm-gnueabi 32-bit cross compiler (820 only)."
 	echo ""
 	echo "  ./build.sh 64"
-	echo "        Build with an aarch64 64-bit cross compiler."
+	echo "        Build with an aarch64 64-bit cross compiler (820 only)."
+	echo ""
+	echo "  ./build.sh 865"
+	echo "        Build with cross compiler for 865"
 	echo ""
 	echo "  ./build.sh native"
 	echo "        Build with the native gcc/g++ compilers."
@@ -65,7 +69,7 @@ case "$MODE" in
 		cd ../
 		;;
 
-	both|BOTH)
+	820)
 		mkdir -p build32
 		cd build32
 		cmake -DCMAKE_TOOLCHAIN_FILE=${TOOLCHAIN32} ${EXTRA_OPTS} ../
@@ -77,6 +81,14 @@ case "$MODE" in
 		make -j$(nproc)
 		cd ../
 		;;
+	865)
+		mkdir -p build
+		cd build
+		cmake -DCMAKE_TOOLCHAIN_FILE=${TOOLCHAIN865} ${EXTRA_OPTS} ../
+		make -j$(nproc)
+		cd ../
+		;;
+
 	*)
 		print_usage
 		exit 1

@@ -3,17 +3,15 @@ before_script:
 
 include:
   - project: 'voxl-public/utilities/ci-tools'
-    file: '/pipeline-configs/.nightly-voxl-cross.yml'
-  - project: 'voxl-public/utilities/ci-tools'
-    file: '/pipeline-configs/.build-voxl-cross.yml'
-  - project: 'voxl-public/utilities/ci-tools'
-    file: '/pipeline-configs/.deploy-dev.yml'
-  - project: 'voxl-public/utilities/ci-tools'
-    file: '/pipeline-configs/.deploy-stable.yml'
+    file: '/pipeline-configs/all.yml'
 
 
 stages:
-    - nightly_build_stage 
-    - build_stage
-    - deploy_stage_dev
-    - deploy_stage_stable
+    - nightly_cross_820_dev
+    - build_cross_820_dev
+    - deploy_cross_820_dev
+    - deploy_cross_820_stable
+    - nightly_cross_865_dev
+    - build_cross_865_dev
+    - deploy_cross_865_dev
+    - deploy_cross_865_stable
