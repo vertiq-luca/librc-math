@@ -21,6 +21,27 @@ USETIMESTAMP=false
 MAKE_DEB=false
 MAKE_IPK=false
 
+print_usage(){
+	echo ""
+	echo " Package the current project into a deb or ipk package."
+	echo " You must run build.sh first to build the binaries"
+	echo ""
+	echo " Usage:"
+	echo ""
+	echo "  ./make_package.sh ipk"
+	echo "        Build an IPK package for 820"
+	echo ""
+	echo "  ./make_package.sh 865"
+	echo "        Build a DEB package for 865"
+	echo ""
+	echo "  ./make_package.sh 865 timestamp"
+	echo "        Build a DEB package with the current timestamp as a"
+	echo "        suffix in both the package name and deb filename."
+	echo "        This is used by CI for development packages."
+	echo ""
+	echo ""
+}
+
 process_argument () {
 
 	if [ "$#" -ne 1 ]; then
@@ -48,6 +69,7 @@ process_argument () {
 			;;
 		*)
 			echo "invalid option"
+			print_usage
 			exit 1
 	esac
 }
@@ -62,6 +84,7 @@ done
 
 if [ $MAKE_DEB == false ] && [ $MAKE_IPK == false ]; then
 	echo "please specify \"deb\" or \"ipk\" argument to specify what package to build"
+	print_usage
 	exit 1
 fi
 
