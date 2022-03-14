@@ -4,18 +4,21 @@ before_script:
 
 include:
   - project: 'voxl-public/utilities/ci-tools'
-    file: '/pipeline-configs/cross-865.yml'
+    file: '/pipeline-configs/cross-qrb5165.yml'
   - project: 'voxl-public/utilities/ci-tools'
-    file: '/pipeline-configs/cross-820.yml'
+    file: '/pipeline-configs/cross-apq8096.yml'
 
 
 stages:
-    - nightly_cross_865_dev
-    - build_cross_865_dev
-    - deploy_cross_865_dev
-    - nightly_cross_820_dev
-    - build_cross_820_dev
-    - deploy_cross_820_dev
-    - nightly_cross_820_stable
-    - build_cross_820_stable
-    - deploy_cross_820_stable
+    - build_cross_qrb5165_dev
+    - build_cross_qrb5165_stable
+    - nightly_cross_qrb5165_dev
+    - nightly_cross_qrb5165_staging
+    - deploy_cross_qrb5165_dev
+    - deploy_cross_qrb5165_stable
+    - build_cross_apq8096_dev
+    - build_cross_apq8096_stable
+    - nightly_cross_apq8096_dev
+    - nightly_cross_apq8096_stable
+    - deploy_cross_apq8096_dev
+    - deploy_cross_apq8096_stable
