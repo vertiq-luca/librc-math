@@ -1,4 +1,4 @@
-# librc_math
+# librc-math
 
 This is a small collection of basic math and control system routines focused on robotics applications. It is meant to be easier to use, tweak, and modify than Eigen due to its simplicity. Howevever, it doesn't claim to be as vast or optimized as Eigen.
 
@@ -18,7 +18,7 @@ https://gitlab.com/voxl-public/voxl-docker
 2) Launch the voxl-cross docker.
 
 ```bash
-~/git/librc_math$ voxl-docker -i voxl-cross
+~/git/librc-math$ voxl-docker -i voxl-cross
 voxl-cross:~$
 ```
 
@@ -60,7 +60,7 @@ The deploy_to_voxl.sh script will query VOXL over adb to see if it has dpkg inst
 
 ```bash
 (outside of docker)
-librc_math$ ./deploy_to_voxl.sh
+librc-math$ ./deploy_to_voxl.sh
 ```
 
 This deploy script can also push over a network given sshpass is installed and the VOXL uses the default root password.
@@ -68,6 +68,6 @@ This deploy script can also push over a network given sshpass is installed and t
 
 ```bash
 (outside of docker)
-librc_math$ ./deploy_to_voxl.sh ssh 192.168.1.123
+librc-math$ ./deploy_to_voxl.sh ssh 192.168.1.123
 ```
 
