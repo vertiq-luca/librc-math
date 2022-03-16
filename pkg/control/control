@@ -2,7 +2,7 @@ Package: librc-math
 Version: 1.1.7
 Section: base
 Priority: optional
-Architecture: all
+Architecture: arm64
 Depends:
 Maintainer: James Strawson <james@modalai.com>
 Description: Math and Linear Algebra Routines for Robotics
