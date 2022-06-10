@@ -652,6 +652,77 @@ int rc_axis_angle_to_rotation_matrix(rc_vector_t axis, double angle, rc_matrix_t
 }
 
 
+int rc_rotation_matrix_to_axis_angle(rc_matrix_t R, rc_vector_t* axis, double* angle)
+{
+    // todo maybe do this in one step like this:
+    // http://www.euclideanspace.com/maths/geometry/rotations/conversions/matrixToAngle/index.htm
+
+    RC_VECTOR_ON_STACK(q, 4);
+    if(rc_rotation_to_quaternion(R, &q)){
+        return -1;
+    }
+    return rc_quaternion_to_axis_angle(q, axis, angle);
+}
+
+
+
+int rc_axis_angle_to_quaternion(rc_vector_t axis, double angle, rc_vector_t* q)
+{
+    // sanity checks
+    if(unlikely(!axis.initialized)){
+        fprintf(stderr, "ERROR in %s, axis vector uninitialized\n", __FUNCTION__);
+        return -1;
+    }
+    if(unlikely(rc_vector_alloc(q,4))){
+        fprintf(stderr, "ERROR in %s, failed to alloc vector q\n", __FUNCTION__);
+        return -1;
+    }
+
+    double half_angle = angle / 2.0;
+    double s = sin(half_angle);
+    double c = cos(half_angle);
+
+    q->d[0] = c; // w
+    q->d[1] = axis.d[0] * s; // i
+    q->d[2] = axis.d[1] * s; // j
+    q->d[3] = axis.d[2] * s; // k
+
+    return 0;
+}
+
+
+int rc_quaternion_to_axis_angle(rc_vector_t q, rc_vector_t* axis, double* angle)
+{
+    // sanity checks
+    if(unlikely(!q.initialized)){
+        fprintf(stderr, "ERROR in %s, quaternion vector uninitialized\n", __FUNCTION__);
+        return -1;
+    }
+    if(unlikely(rc_vector_alloc(axis,3))){
+        fprintf(stderr, "ERROR in %s, failed to alloc axis vector\n", __FUNCTION__);
+        return -1;
+    }
+
+    *angle = 2.0 * acos(q.d[0]);
+    double s = sqrt(1 - (q.d[0] * q.d[0]));
+
+
+    if(s < 0.0001){
+        axis->d[0] = 1;
+        axis->d[1] = 0;
+        axis->d[2] = 0;
+    }
+    else {
+        axis->d[0] = q.d[1] / s;
+        axis->d[1] = q.d[2] / s;
+        axis->d[2] = q.d[3] / s;
+    }
+
+    return 0;
+}
+
+
+
 
 
 int rc_rotation_to_tait_bryan(rc_matrix_t R, double* roll, double* pitch, double* yaw)

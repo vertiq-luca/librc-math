@@ -307,6 +307,7 @@ int rc_rotation_to_quaternion(rc_matrix_t R, rc_vector_t* q);
  */
 int rc_quaternion_slerp(rc_vector_t q1, rc_vector_t q2, double t, rc_vector_t* out);
 
+
 /**
  * @brief      convert an axis-angle rotation to rotation matrix form
  *
@@ -317,6 +318,45 @@ int rc_quaternion_slerp(rc_vector_t q1, rc_vector_t q2, double t, rc_vector_t* o
  * @return     0 on success, -1 on failure
  */
 int rc_axis_angle_to_rotation_matrix(rc_vector_t axis, double angle, rc_matrix_t* R);
+
+
+/**
+ * @brief      convert an rotation matrix to axis-angle format.
+ *             Assumes pure rotation with no scaling.
+ *
+ * @param[in]  rotation  input 3x3 rotation matrix
+ * @param      axis      3D axis
+ * @param      angle     angle in radians
+ *
+ * @return     0 on success, -1 on failure
+ */
+int rc_rotation_matrix_to_axis_angle(rc_matrix_t R, rc_vector_t* axis, double* angle);
+
+
+/**
+ * @brief      convert an axis-angle rotation to quaternion form
+ *
+ * @param[in]  axis      3D axis
+ * @param[in]  angle     angle in radians
+ * @param      q         resulting quaternion wijk order
+ *
+ * @return     0 on success, -1 on failure
+ */
+int rc_axis_angle_to_quaternion(rc_vector_t axis, double angle, rc_vector_t* q);
+
+
+/**
+ * @brief      convert a quaternion to axis-angle format. Expect a normalized
+ *             quaternion as an input;
+ *
+ * @param[in]      q         input quaternion wijk order
+ * @param          axis      3D axis
+ * @param          angle     angle in radians
+ *
+ * @return     0 on success, -1 on failure
+ */
+int rc_quaternion_to_axis_angle(rc_vector_t q, rc_vector_t* axis, double* angle);
+
 
 /**
  * @brief      Convert a rotation matrix to tait-bryan angles

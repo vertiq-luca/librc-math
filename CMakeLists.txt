@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.5)
-
+project(rc_math)
 set(LIBNAME rc_math)
 
 # James' standard list of cmake flags
