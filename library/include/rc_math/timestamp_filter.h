@@ -39,7 +39,7 @@
 typedef struct rc_ts_filter_t{
 
 	int initialized;
-	float expected_odr;
+	double expected_odr;
 	double clock_ratio;
 	int64_t last_ts_ns;
 	double phase_constant;
@@ -48,6 +48,7 @@ typedef struct rc_ts_filter_t{
 	int en_debug_prints;
 	int64_t error_check_tol_ns;
 	double estimated_dt_ns;
+	double last_diff;
 
 } rc_ts_filter_t;
 
@@ -57,12 +58,13 @@ typedef struct rc_ts_filter_t{
 	.expected_odr = 0,\
 	.clock_ratio = 1.0,\
 	.last_ts_ns = -1,\
-	.phase_constant = 50.0,\
-	.clock_ratio_constant = 200.0,\
+	.phase_constant = 20.0,\
+	.clock_ratio_constant = 50.0,\
 	.bad_read_flag = 0,\
 	.en_debug_prints = 0,\
 	.error_check_tol_ns = 100000000,\
-	.estimated_dt_ns = 0.0\
+	.estimated_dt_ns = 0.0,\
+	.last_diff = 0.0\
 }
 
 

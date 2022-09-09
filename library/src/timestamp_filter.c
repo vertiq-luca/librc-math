@@ -49,6 +49,11 @@ int rc_ts_filter_init(rc_ts_filter_t* f, double odr)
 	rc_ts_filter_t new = RC_TS_FILTER_INITIALIZER;
 	new.expected_odr = odr;
 	new.initialized = 1;
+
+
+	// rc_filter_first_order_lowpass(&new.f, 30, 10);
+	// rc_filter_prefill_inputs(&new.f, 1.0);
+	// rc_filter_prefill_outputs(&new.f, 1.0);
 	*f = new;
 	return 0;
 }
@@ -102,11 +107,12 @@ int64_t rc_ts_filter_calc_multi(rc_ts_filter_t* f, int64_t best_guess, int sampl
 	int64_t forward_prediction = f->last_ts_ns \
 				+ (int64_t)((double)samples*(f->clock_ratio)*1000000000.0/f->expected_odr);
 
-	int64_t diff = best_guess - forward_prediction;
+	double diff = best_guess - forward_prediction;
 
 	// if we exceeded the tolerance
-	if(llabs(diff) > f->error_check_tol_ns){
+	if(fabs(diff) > f->error_check_tol_ns){
 		f->last_ts_ns = best_guess;
+		f->last_diff = 0.0;
 		if(f->en_debug_prints){
 			printf("using monotonic time, diff too big: %6.1fms\n", diff/1000000.0);
 		}
@@ -123,7 +129,12 @@ int64_t rc_ts_filter_calc_multi(rc_ts_filter_t* f, int64_t best_guess, int sampl
 	// in when the apps proc wakes up to service the data. If it trends up or
 	// down then that indicates a difference in clock speed between apps and imu.
 	// try to converge on that clock ratio.
-	f->clock_ratio += ((double)diff/1000000000.0)/f->clock_ratio_constant;
+	//
+	// This behaves like a PI controller. First term is P, Second is I
+	f->clock_ratio += ((diff - f->last_diff)/1000000000.0)/(f->clock_ratio_constant * 1) + \
+						((diff)/1000000000.0)/f->clock_ratio_constant;
+
+	f->last_diff = diff;
 
 	if(f->en_debug_prints){
 		int64_t new_dt = 1000000000.0/(f->expected_odr/(f->clock_ratio));
