@@ -12,6 +12,8 @@
 #include <math.h>
 #include <stdint.h>
 #include <stdlib.h>
+#include <time.h>
+#include <errno.h>
 #include <rc_math/other.h>
 
 // preposessor macros
@@ -79,5 +81,65 @@ int rc_saturate_double(double* val, double min, double max)
         *val = min;
         return 1;
     }
+    return 0;
+}
+
+int64_t rc_time_monotonic_ns()
+{
+    struct timespec ts;
+    if(clock_gettime(CLOCK_MONOTONIC, &ts)){
+        fprintf(stderr,"ERROR calling clock_gettime\n");
+        return -1;
+    }
+    return (int64_t)ts.tv_sec*1000000000 + (int64_t)ts.tv_nsec;
+}
+
+
+int64_t rc_time_realtime_ns()
+{
+    struct timespec ts;
+    if(clock_gettime(CLOCK_REALTIME, &ts)){
+        fprintf(stderr,"ERROR calling clock_gettime\n");
+        return -1;
+    }
+    return (int64_t)ts.tv_sec*1000000000 + (int64_t)ts.tv_nsec;
+}
+
+
+
+void rc_nanosleep(int64_t ns){
+    if(ns<=0) return;
+    struct timespec req,rem;
+    req.tv_sec = ns/1000000000;
+    req.tv_nsec = ns%1000000000;
+    // loop untill nanosleep sets an error or finishes successfully
+    errno=0; // reset errno to avoid false detection
+    while(nanosleep(&req, &rem) && errno==EINTR){
+        req.tv_sec = rem.tv_sec;
+        req.tv_nsec = rem.tv_nsec;
+    }
+    return;
+}
+
+
+int rc_loop_sleep(double rate_hz, int64_t* next_time)
+{
+    int64_t current_time = rc_time_monotonic_ns();
+
+    // static variable so we remember when we last woke up
+    if(*next_time<=0){
+        *next_time = current_time;
+    }
+
+    // try to maintain output data rate
+    *next_time += (1000000000.0/rate_hz);
+
+    // uh oh, we fell behind, warn and get back on track
+    if(*next_time<=current_time){
+        fprintf(stderr, "WARNING my_loop_sleep fell behind\n");
+        return -1;
+    }
+
+    rc_nanosleep(*next_time-current_time);
     return 0;
 }

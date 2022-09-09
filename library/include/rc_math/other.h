@@ -4,7 +4,7 @@
  * @brief      Math functions that don't fit elsewhere.
  *
  * @author     James Strawson
- * @date       2016
+ * @date       2022
  *
  * @addtogroup Other_Math
  * @ingroup Math
@@ -14,6 +14,8 @@
 
 #ifndef RC_MATH_OTHER_H
 #define RC_MATH_OTHER_H
+
+#include <stdint.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -63,6 +65,19 @@ int rc_saturate_float(float* val, float min, float max);
  * and -1 if min was falsely larger than max.
  */
 int rc_saturate_double(double* val, double min, double max);
+
+
+/**
+ * @brief      return current monotonic time in nanoseconds
+ *
+ * @return     current monotonic time in nanoseconds
+ */
+int64_t rc_time_monotonic_ns(void);
+int64_t rc_time_realtime_ns(void);
+
+void rc_nanosleep(int64_t ns);
+int rc_loop_sleep(double rate_hz, int64_t* next_time);
+
 
 
 #ifdef __cplusplus
