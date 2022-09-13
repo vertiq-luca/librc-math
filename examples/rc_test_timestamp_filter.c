@@ -44,6 +44,37 @@ static void __signal_handler(__attribute__ ((unused)) int dummy)
 }
 
 
+static void _print_usage(void)
+{
+	printf("\n");
+	printf("rc_test_timestamp_filter\n");
+	printf("\n");
+	printf("Tool for evalulating the timestamp filter using simulated\n");
+	printf("noisy timestamp data.\n");
+	printf("\n");
+	printf("\n");
+	printf("-c --cam           preset for 30fps camera sim\n");
+	printf("-h --help          print this help message\n");
+	printf("-i --imu           preset for 1khz imu reading 10 samples each time\n");
+	printf("-n --noise {val}   noise level coefficient. Multiplied by dt to find\n");
+	printf("                     the max deviation from idea timestamp. For the\n");
+	printf("                     default value of 0.5 and a sample rate of 100hz,\n");
+	printf("                     this would give a dt of 10ms and timestamp guess\n");
+	printf("                     error would be +-5ms\n");
+	printf("-o --odr {val}     simulated output data rate in hz(default 30)\n");
+	printf("-s --scale {val}   simluate an error in the ODR, for example when\n");
+	printf("                     sampling an IMU with an inaccurate internal clock.\n");
+	printf("                     Default value of 1.02 means an actual dt between\n");
+	printf("                     samples in 1.02 (2 percent) more than expected.\n");
+	printf("-t --samples {val} specify number of samples read per wakeup. Defaults\n");
+	printf("                     to 1 which is most common. IMU preset mode sets this\n");
+	printf("                     to 10 to simulate reading 10 samples from an IMU\n");
+	printf("                     FIFO buffer each time the bus is serviced.\n");
+	printf("\n");
+
+}
+
+
 static int _parse_opts(int argc, char* argv[])
 {
 	static struct option long_options[] =
@@ -51,16 +82,16 @@ static int _parse_opts(int argc, char* argv[])
 		{"cam",             no_argument,       0, 'c'},
 		{"help",            no_argument,       0, 'h'},
 		{"imu",             no_argument,       0, 'i'},
-		{"phase_noise",     required_argument, 0, 'p'},
+		{"noise",           required_argument, 0, 'n'},
 		{"odr",             required_argument, 0, 'o'},
-		{"scale_err",       required_argument, 0, 's'},
+		{"scale",           required_argument, 0, 's'},
 		{"samples",         required_argument, 0, 't'},
 		{0, 0, 0, 0}
 	};
 
 	while(1){
 		int option_index = 0;
-		int c = getopt_long(argc, argv, "chip:o:s:t:", long_options, &option_index);
+		int c = getopt_long(argc, argv, "chin:o:s:t:", long_options, &option_index);
 
 		if(c == -1) break; // Detect the end of the options.
 
@@ -75,13 +106,13 @@ static int _parse_opts(int argc, char* argv[])
 			samples = CAM_SAMPLES;
 			break;
 		case 'h':
-			//_print_usage();
+			_print_usage();
 			exit(0);
 		case 'i':
 			odr_expected = IMU_ODR;
 			samples = IMU_SAMPLES;
 			break;
-		case 'p':
+		case 'n':
 			phase_noise = atof(optarg);
 			if(phase_noise<0.0){
 				fprintf(stderr, "ERROR: phase_noise must be >= 0.0\n");
@@ -110,7 +141,7 @@ static int _parse_opts(int argc, char* argv[])
 			}
 			break;
 		default:
-			//_print_usage();
+			_print_usage();
 			exit(-1);
 		}
 	}
@@ -142,13 +173,16 @@ int main(int argc, char* argv[])
 	rc_ts_filter_init(&f, odr_expected);
 
 	// turn on debug printing so we can monitor the filter
-	f.en_debug_prints = 1;
+	//f.en_debug_prints = 1;
 
 	// set signal handler so the loop can exit cleanly
 	signal(SIGINT, __signal_handler);
 	running = 1;
 
-	int64_t t_next = rc_time_monotonic_ns();
+	int64_t t_start = rc_time_monotonic_ns();
+	int64_t t_next_ideal = t_start;
+	int64_t t_actual_wakeup_last = t_start;
+	int ctr = 0;
 
 
 	// Keep Running until program state changes to 0
@@ -156,25 +190,50 @@ int main(int argc, char* argv[])
 
 		int64_t t_current = rc_time_monotonic_ns();
 
-
 		// guess the timestamp. Here we just grab current time. In practice you
 		// should subtract things like serial port latency and camera exposure.
 		int64_t best_guess = t_current;
 
 		// estimate timestamp from best guess
-		int64_t estimated_timestamp;
+		// we could technically call rc_ts_filter_calc_multi with samples set to
+		// 1 as this happens internally, but we use both single and multi functions
+		// here to complete the API testing
+		int64_t estimated_ts;
 		if(samples==1){
-			estimated_timestamp = rc_ts_filter_calc(&f, best_guess);
+			estimated_ts = rc_ts_filter_calc(&f, best_guess);
 		}else{
-			estimated_timestamp = rc_ts_filter_calc_multi(&f, best_guess, samples);
+			estimated_ts = rc_ts_filter_calc_multi(&f, best_guess, samples);
 		}
 
 
-		// now
+
+		// now calculate and print some stats
+		int64_t ns_since_start = t_current - t_start;
+		int64_t measured_dt = t_current - t_actual_wakeup_last;
+		int64_t error_ns = estimated_ts - t_next_ideal;
+
+		printf("i:%5d t_s:%6.2f  scale: %5.3f  measured_dt_ms:%6.2f error_ms:%6.2f\n",\
+								ctr,\
+								(double)ns_since_start/1000000000.0,\
+								f.clock_ratio,\
+								(double)measured_dt/1000000.0,\
+								(double)error_ns/1000000.0);
+
+		// printf("%6.2f\n", (double)error_ns/1000000.0);
+
+
+
+
+		// this is the next time we should wake up assuming perfect sampling
+		t_next_ideal = t_next_ideal + samples*dt;
+
+		// calculate new random noise to add to this ideal time
 		int64_t induced_error_ns = dt * phase_noise * rc_get_random_double();
-		t_next = t_next + samples*dt;
-		//printf("sleeping for %0.1fms\n", (t_next - t_current)/1000000.0);
-		rc_nanosleep(t_next-t_current+induced_error_ns);
+
+		// sleep until next random wakeup time and bump loop counter
+		rc_nanosleep(t_next_ideal-t_current + induced_error_ns);
+		ctr++;
+		t_actual_wakeup_last = t_current;
 	}
 
 	printf("\nDONE\n");

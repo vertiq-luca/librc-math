@@ -85,6 +85,10 @@ int64_t rc_ts_filter_calc_multi(rc_ts_filter_t* f, int64_t best_guess, int sampl
 	if(f->last_ts_ns<=0){
 		f->last_ts_ns = best_guess;
 		f->bad_read_flag = 0;
+		f->last_diff = 0.0;
+		if(f->en_debug_prints){
+			printf("using best guest on first sample\n");
+		}
 		return best_guess;
 	}
 
@@ -92,9 +96,10 @@ int64_t rc_ts_filter_calc_multi(rc_ts_filter_t* f, int64_t best_guess, int sampl
 	// etc then just reset back to the best guess read
 	if(f->bad_read_flag){
 		if(f->en_debug_prints){
-			printf("using monotonic time, lost packets since last read\n");
+			printf("using best guess due to bad read\n");
 		}
 		f->last_ts_ns = best_guess;
+		f->last_diff = 0.0;
 		f->bad_read_flag = 0;
 		return best_guess;
 	}
@@ -110,7 +115,7 @@ int64_t rc_ts_filter_calc_multi(rc_ts_filter_t* f, int64_t best_guess, int sampl
 	double diff = best_guess - forward_prediction;
 
 	// if we exceeded the tolerance
-	if(fabs(diff) > f->error_check_tol_ns){
+	if(fabs(diff) > f->error_tol_ns){
 		f->last_ts_ns = best_guess;
 		f->last_diff = 0.0;
 		if(f->en_debug_prints){
@@ -131,14 +136,19 @@ int64_t rc_ts_filter_calc_multi(rc_ts_filter_t* f, int64_t best_guess, int sampl
 	// try to converge on that clock ratio.
 	//
 	// This behaves like a PI controller. First term is P, Second is I
-	f->clock_ratio += ((diff - f->last_diff)/1000000000.0)/(f->clock_ratio_constant * 1) + \
-						((diff)/1000000000.0)/f->clock_ratio_constant;
+	double P = ((diff - f->last_diff)/1000000000.0)/(f->scale_constant / 20.0);
+	double I = ((diff)/1000000000.0)/f->scale_constant;
+
+	f->clock_ratio += P+I;
+
+	//printf("P: %13.10f I: %13.10f ", P,I);
+
 
 	f->last_diff = diff;
 
 	if(f->en_debug_prints){
 		int64_t new_dt = 1000000000.0/(f->expected_odr/(f->clock_ratio));
-		printf("scale: %f diff_ms: %6.1f dt_ms %7.3f\n", f->clock_ratio, diff/1000000.0, new_dt/1000000.0);
+		printf("scale: %f  diff_ms: %5.1f  dt_ms %5.2f\n", f->clock_ratio, diff/1000000.0, new_dt/1000000.0);
 	}
 
 	return filtered_ts_ns;

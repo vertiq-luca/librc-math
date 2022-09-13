@@ -37,34 +37,33 @@
 #include <stdint.h>
 
 typedef struct rc_ts_filter_t{
+	// User configurable fields
+	int en_debug_prints;	///< set to 1 to enable API calls to print debug info
+	int64_t error_tol_ns;	///< guesses that deviate from the prediction by more than this will be flagged as a bad read
+	double expected_odr;	///< expected output data rate, set by rc_ts_filter_init
+	double phase_constant;	///< default 20, lower converges faster
+	double scale_constant;	///< defualt 50, lower converges faster
 
-	int initialized;
-	double expected_odr;
-	double clock_ratio;
-	int64_t last_ts_ns;
-	double phase_constant;
-	double clock_ratio_constant;
-	int bad_read_flag;
-	int en_debug_prints;
-	int64_t error_check_tol_ns;
-	double estimated_dt_ns;
-	double last_diff;
-
+	// state fields, read only
+	int initialized;		///< set to 1 by rc_ts_filter_init()
+	double clock_ratio;		///< starts at 1, converges on the estimated ratio of expected_odr to estimated_odr
+	int64_t last_ts_ns;		///< last estimated timestamp returned by a _calc() function
+	double last_diff;		///< previous step's difference between guessed and estimated timestamp
+	int bad_read_flag;		///< flag indicating a timestamp guess was wrong or samples were dropped
 } rc_ts_filter_t;
 
 
 #define RC_TS_FILTER_INITIALIZER {\
-	.initialized = 0,\
-	.expected_odr = 0,\
-	.clock_ratio = 1.0,\
-	.last_ts_ns = -1,\
-	.phase_constant = 20.0,\
-	.clock_ratio_constant = 50.0,\
-	.bad_read_flag = 0,\
 	.en_debug_prints = 0,\
-	.error_check_tol_ns = 100000000,\
-	.estimated_dt_ns = 0.0,\
-	.last_diff = 0.0\
+	.error_tol_ns = 100000000,\
+	.expected_odr = 0,\
+	.phase_constant = 50.0,\
+	.scale_constant = 50.0,\
+	.initialized = 0,\
+	.clock_ratio = 1.0,\
+	.last_ts_ns = 0,\
+	.last_diff = 0.0,\
+	.bad_read_flag = 0\
 }
 
 
