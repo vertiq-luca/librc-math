@@ -135,13 +135,10 @@ int64_t rc_ts_filter_calc_multi(rc_ts_filter_t* f, int64_t best_guess, int sampl
 	// down then that indicates a difference in clock speed between apps and imu.
 	// try to converge on that clock ratio.
 	//
-	// This behaves like a PI controller. First term is P, Second is I
-	double P = ((diff - f->last_diff)/1000000000.0)/(f->scale_constant / 20.0);
-	double I = ((diff)/1000000000.0)/f->scale_constant;
-
-	f->clock_ratio += P+I;
-
-	//printf("P: %13.10f I: %13.10f ", P,I);
+	// This behaves like a PD controller
+	double P = ((diff)/1000000000.0)/f->scale_constant;
+	double D = ((diff - f->last_diff)/1000000000.0)/(f->scale_constant);
+	f->clock_ratio += P/40 + D;
 
 
 	f->last_diff = diff;

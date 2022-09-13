@@ -58,7 +58,7 @@ typedef struct rc_ts_filter_t{
 	.error_tol_ns = 100000000,\
 	.expected_odr = 0,\
 	.phase_constant = 50.0,\
-	.scale_constant = 50.0,\
+	.scale_constant = 1.0,\
 	.initialized = 0,\
 	.clock_ratio = 1.0,\
 	.last_ts_ns = 0,\

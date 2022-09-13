@@ -219,7 +219,8 @@ int main(int argc, char* argv[])
 								(double)measured_dt/1000000.0,\
 								(double)error_ns/1000000.0);
 
-		// printf("%6.2f\n", (double)error_ns/1000000.0);
+		// for printing just the ts error to help plot impulse response
+		//printf("%6.2f\n", (double)error_ns/1000000.0);
 
 
 
