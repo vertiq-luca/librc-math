@@ -48,6 +48,7 @@ int rc_ts_filter_init(rc_ts_filter_t* f, double odr)
 {
 	rc_ts_filter_t new = RC_TS_FILTER_INITIALIZER;
 	new.expected_odr = odr;
+	new.estimated_dt = 1.0/odr;
 	new.initialized = 1;
 
 
@@ -95,13 +96,19 @@ int64_t rc_ts_filter_calc_multi(rc_ts_filter_t* f, int64_t best_guess, int sampl
 	// if there was some sort of bad read due to serial bus error, dropped packet,
 	// etc then just reset back to the best guess read
 	if(f->bad_read_flag){
-		if(f->en_debug_prints){
-			printf("using best guess due to bad read\n");
-		}
-		f->last_ts_ns = best_guess;
+
+		// try to guess if we skipped any samples
+		int n_skipped = round(((double)(best_guess-f->last_ts_ns)/1000000000.0)/f->estimated_dt)-1;
+
+		//if(f->en_debug_prints){
+			printf("using best guess due to bad read n_skipped=%d\n", n_skipped);
+		//}
+
+		f->last_ts_ns = f->last_ts_ns + (n_skipped+1)*f->estimated_dt*1000000000;
 		f->last_diff = 0.0;
 		f->bad_read_flag = 0;
-		return best_guess;
+
+		return f->last_ts_ns;
 	}
 
 	// if the last read was good, (and assuming this read was good), we can guess
@@ -138,14 +145,14 @@ int64_t rc_ts_filter_calc_multi(rc_ts_filter_t* f, int64_t best_guess, int sampl
 	// This behaves like a PD controller
 	double P = ((diff)/1000000000.0)/f->scale_constant;
 	double D = ((diff - f->last_diff)/1000000000.0)/(f->scale_constant);
-	f->clock_ratio += P/40 + D;
+	f->clock_ratio += samples * (P + D*20);
 
 
 	f->last_diff = diff;
+	f->estimated_dt = f->clock_ratio/f->expected_odr;
 
 	if(f->en_debug_prints){
-		int64_t new_dt = 1000000000.0/(f->expected_odr/(f->clock_ratio));
-		printf("scale: %f  diff_ms: %5.1f  dt_ms %5.2f\n", f->clock_ratio, diff/1000000.0, new_dt/1000000.0);
+		printf("scale: %f  diff_ms: %5.1f  dt_ms %5.2f\n", f->clock_ratio, diff/1000000.0, f->estimated_dt*1000.0);
 	}
 
 	return filtered_ts_ns;

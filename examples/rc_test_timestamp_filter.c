@@ -28,13 +28,13 @@
 
 
 static int running = 0;
-
-// IMU test
 static double odr_expected = CAM_ODR;
 static int64_t samples = 1;
 static double phase_noise = DEFAULT_PHASE_NOISE;
 static double scale_err = DEFAULT_SCALE_ERR;
-
+static int bad_samples = 0;
+static int en_debug = 0;
+static int en_response = 0;
 
 // interrupt handler to catch ctrl-c
 static void __signal_handler(__attribute__ ((unused)) int dummy)
@@ -53,7 +53,9 @@ static void _print_usage(void)
 	printf("noisy timestamp data.\n");
 	printf("\n");
 	printf("\n");
+	printf("-b --bad {n}       trigger a bad read every n wakeups\n");
 	printf("-c --cam           preset for 30fps camera sim\n");
+	printf("-d --debug         enable the API's build in debug mode\n");
 	printf("-h --help          print this help message\n");
 	printf("-i --imu           preset for 1khz imu reading 10 samples each time\n");
 	printf("-n --noise {val}   noise level coefficient. Multiplied by dt to find\n");
@@ -63,6 +65,7 @@ static void _print_usage(void)
 	printf("                     error would be +-5ms\n");
 	printf("-o --odr {val}     simulated output data rate in hz(default 30)\n");
 	printf("-s --scale {val}   simluate an error in the ODR, for example when\n");
+	printf("-r --response      print only the error in ms for evalulating response.\n");
 	printf("                     sampling an IMU with an inaccurate internal clock.\n");
 	printf("                     Default value of 1.02 means an actual dt between\n");
 	printf("                     samples in 1.02 (2 percent) more than expected.\n");
@@ -79,11 +82,14 @@ static int _parse_opts(int argc, char* argv[])
 {
 	static struct option long_options[] =
 	{
+		{"bad",             required_argument, 0, 'b'},
 		{"cam",             no_argument,       0, 'c'},
+		{"debug",           no_argument,       0, 'd'},
 		{"help",            no_argument,       0, 'h'},
 		{"imu",             no_argument,       0, 'i'},
 		{"noise",           required_argument, 0, 'n'},
 		{"odr",             required_argument, 0, 'o'},
+		{"response",        no_argument,       0, 'r'},
 		{"scale",           required_argument, 0, 's'},
 		{"samples",         required_argument, 0, 't'},
 		{0, 0, 0, 0}
@@ -91,7 +97,7 @@ static int _parse_opts(int argc, char* argv[])
 
 	while(1){
 		int option_index = 0;
-		int c = getopt_long(argc, argv, "chin:o:s:t:", long_options, &option_index);
+		int c = getopt_long(argc, argv, "b:cdhin:o:rs:t:", long_options, &option_index);
 
 		if(c == -1) break; // Detect the end of the options.
 
@@ -101,9 +107,19 @@ static int _parse_opts(int argc, char* argv[])
 			// nothing left to do so just break.
 			if (long_options[option_index].flag != 0) break;
 			break;
+		case 'b':
+			bad_samples = atoi(optarg);
+			if(bad_samples<0){
+				fprintf(stderr, "ERROR: bad_samples must be >=0\n");
+				exit(-1);
+			}
+			break;
 		case 'c':
 			odr_expected = CAM_ODR;
 			samples = CAM_SAMPLES;
+			break;
+		case 'd':
+			en_debug = 1;
 			break;
 		case 'h':
 			_print_usage();
@@ -125,6 +141,9 @@ static int _parse_opts(int argc, char* argv[])
 				fprintf(stderr, "ERROR: odr must be >= 0.0\n");
 				exit(-1);
 			}
+			break;
+		case 'r':
+			en_response = 1;
 			break;
 		case 's':
 			scale_err = atof(optarg);
@@ -166,6 +185,7 @@ int main(int argc, char* argv[])
 	printf("expected ODR:             %0.1f\n", odr_expected);
 	printf("ODR with scale error:     %0.1f\n", odr_real);
 	printf("dt (ms) with scale error: %0.2f\n", dt/1000000.0);
+	if(bad_samples>0) printf("triggering a bad read every %d wakeups\n", bad_samples);
 	printf("\n");
 
 	// set up filter with the ODR we expect from the sensor
@@ -173,7 +193,7 @@ int main(int argc, char* argv[])
 	rc_ts_filter_init(&f, odr_expected);
 
 	// turn on debug printing so we can monitor the filter
-	//f.en_debug_prints = 1;
+	if(en_debug) f.en_debug_prints = 1;
 
 	// set signal handler so the loop can exit cleanly
 	signal(SIGINT, __signal_handler);
@@ -211,18 +231,28 @@ int main(int argc, char* argv[])
 		int64_t ns_since_start = t_current - t_start;
 		int64_t measured_dt = t_current - t_actual_wakeup_last;
 		int64_t error_ns = estimated_ts - t_next_ideal;
-
-		printf("i:%5d t_s:%6.2f  scale: %5.3f  measured_dt_ms:%6.2f error_ms:%6.2f\n",\
+		if(!en_debug && !en_response){
+			printf("i:%5d t_s:%6.2f  scale: %5.3f  measured_dt_ms:%6.2f error_ms:%6.2f\n",\
 								ctr,\
 								(double)ns_since_start/1000000000.0,\
 								f.clock_ratio,\
 								(double)measured_dt/1000000.0,\
 								(double)error_ns/1000000.0);
+		}
 
-		// for printing just the ts error to help plot impulse response
-		//printf("%6.2f\n", (double)error_ns/1000000.0);
+		// print just the ts error to help plot impulse response
+		if(en_response){
+			printf("%6.2f\n", (double)error_ns/1000000.0);
+		}
 
+		// simulate skipping a read cycle such as a bus read error or dropped frame
+		if(bad_samples>0 && ctr%bad_samples == 0){
+			if(!en_debug) printf("simulating a bad reading\n");
+			rc_ts_filter_report_bad_read(&f);
 
+			// skip a whole read cycle
+			t_next_ideal = t_next_ideal + samples*dt;
+		}
 
 
 		// this is the next time we should wake up assuming perfect sampling

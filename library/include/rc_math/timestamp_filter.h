@@ -47,6 +47,7 @@ typedef struct rc_ts_filter_t{
 	// state fields, read only
 	int initialized;		///< set to 1 by rc_ts_filter_init()
 	double clock_ratio;		///< starts at 1, converges on the estimated ratio of expected_odr to estimated_odr
+	double estimated_dt;	///< estimated dt between samples given current clock ratio
 	int64_t last_ts_ns;		///< last estimated timestamp returned by a _calc() function
 	double last_diff;		///< previous step's difference between guessed and estimated timestamp
 	int bad_read_flag;		///< flag indicating a timestamp guess was wrong or samples were dropped
@@ -57,10 +58,11 @@ typedef struct rc_ts_filter_t{
 	.en_debug_prints = 0,\
 	.error_tol_ns = 100000000,\
 	.expected_odr = 0,\
-	.phase_constant = 50.0,\
-	.scale_constant = 1.0,\
+	.phase_constant = 100.0,\
+	.scale_constant = 50.0,\
 	.initialized = 0,\
 	.clock_ratio = 1.0,\
+	.estimated_dt = 0.0,\
 	.last_ts_ns = 0,\
 	.last_diff = 0.0,\
 	.bad_read_flag = 0\
