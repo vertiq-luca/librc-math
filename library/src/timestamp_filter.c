@@ -100,9 +100,13 @@ int64_t rc_ts_filter_calc_multi(rc_ts_filter_t* f, int64_t best_guess, int sampl
 		// try to guess if we skipped any samples
 		int n_skipped = round(((double)(best_guess-f->last_ts_ns)/1000000000.0)/f->estimated_dt)-1;
 
-		//if(f->en_debug_prints){
+		// don't allow negative skipped frame which could happen with really
+		// noisy or buggy program calling this function
+		if(n_skipped<0) n_skipped = 0;
+
+		if(f->en_debug_prints){
 			printf("using best guess due to bad read n_skipped=%d\n", n_skipped);
-		//}
+		}
 
 		f->last_ts_ns = f->last_ts_ns + (n_skipped+1)*f->estimated_dt*1000000000;
 		f->last_diff = 0.0;
