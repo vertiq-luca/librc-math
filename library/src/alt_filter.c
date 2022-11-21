@@ -4,6 +4,12 @@
 #include <rc_math/alt_filter.h>
 
 
+rc_alt_filter_t rc_alt_filter_empty(void)
+{
+	rc_alt_filter_t new = RC_ALT_FILTER_INITIALIZER;
+	return new;
+}
+
 
 int rc_alt_filter_init(rc_alt_filter_t* f, double odr_hz)
 {

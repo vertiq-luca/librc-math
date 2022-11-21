@@ -66,6 +66,9 @@ typedef struct rc_alt_filter_t{
 }
 
 
+// returns a clean default uninitialized rc_alt_filter struct for cases where
+// you can't or don't want to use the initializer macro above (looking at you C++ -_-)
+rc_alt_filter_t rc_alt_filter_empty(void);
 
 int rc_alt_filter_init(rc_alt_filter_t* f, double odr_hz);
 
