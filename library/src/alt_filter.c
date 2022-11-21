@@ -110,8 +110,12 @@ int rc_alt_filter_add_flow(rc_alt_filter_t* f, double scale, int64_t ts_ns)
 	int is_scale_valid = 1;
 
 	// check if we should use scale or not.
-	if(scale<0.90 || scale >1.10 || f->last_output < f->min_hgt_to_estimate || \
-			(scale<1.001 && scale>0.999)){
+	double dist_from_one = fabs(scale - 1.0);
+
+	if(	dist_from_one > f->scale_outer_limit ||\
+		dist_from_one < f->scale_inner_limit ||\
+		f->last_output < f->min_hgt_to_estimate)
+	{
 		is_scale_valid = 0;
 		cam_hgt = f->lpf.newest_input + baro_v_at_ts*f->dt;
 	}

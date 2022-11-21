@@ -21,6 +21,8 @@ typedef struct rc_alt_filter_t{
 	double feedback_constant;
 	int baro_buf_len;
 	double min_hgt_to_estimate;
+	double scale_inner_limit;
+	double scale_outer_limit;
 
 	// state fields, read only
 	double odr_hz;			///< framerate of the optic flow camera
@@ -51,6 +53,8 @@ typedef struct rc_alt_filter_t{
 	.feedback_constant = 0.2,\
 	.baro_buf_len = 100,\
 	.min_hgt_to_estimate = 0.5,\
+	.scale_inner_limit = 0.01,\
+	.scale_outer_limit = 0.1,\
 	.initialized = 0,\
 	.lpf = RC_FILTER_INITIALIZER,\
 	.hpf = RC_FILTER_INITIALIZER,\
