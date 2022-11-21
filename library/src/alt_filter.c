@@ -100,18 +100,18 @@ int rc_alt_filter_add_flow(rc_alt_filter_t* f, double scale, int64_t ts_ns)
 
 
 	// height above ground as predicted by optic scale to go into HPF
-	double scale_prediction;
+	double cam_hgt;
 	int is_scale_valid = 1;
 
 	// check if we should use scale or not.
-	if(scale<0.90 || scale >1.10 || f->last_output < 1.0 || \
+	if(scale<0.90 || scale >1.10 || f->last_output < f->min_hgt_to_estimate || \
 			(scale<1.001 && scale>0.999)){
 		is_scale_valid = 0;
-		scale_prediction = f->lpf.newest_input + baro_v_at_ts*f->dt;
+		cam_hgt = f->lpf.newest_input + baro_v_at_ts*f->dt;
 	}
 	else{
 		// image shrinking means we are ascending.
-		scale_prediction = f->last_output / scale;
+		cam_hgt = f->last_output / scale;
 		is_scale_valid = 1;
 	}
 
@@ -126,7 +126,7 @@ int rc_alt_filter_add_flow(rc_alt_filter_t* f, double scale, int64_t ts_ns)
 
 		// height that would match the baro velocity at that scale.
 		double h_eq = (baro_v_at_ts * f->dt)/(1.0-scale);
-		double h_error = scale_prediction - h_eq;
+		double h_error = cam_hgt - h_eq;
 
 		// integrator not currently used, but there in case it's useful in the future
 		f->err_integrator += (h_error + f->last_error) * f->dt / 2;
@@ -139,24 +139,34 @@ int rc_alt_filter_add_flow(rc_alt_filter_t* f, double scale, int64_t ts_ns)
 		//double correction = (f->err_integrator * gain) + (h_error * gain * 1.1);
 
 		// ADD CORRECTION TO LPF
-		scale_prediction -= correction;
+		cam_hgt -= correction;
+
+		// never let the camera height drop below 0
+		if(cam_hgt<0) cam_hgt=0;
 
 		if(f->en_debug_prints){
 			printf("baro_v_at_ts: %5.2f ", baro_v_at_ts);
 			printf("h_eq: %5.2f ", h_eq);
 			printf("h_err: %5.2f ", h_error);
 			printf("correction: %6.3f ", correction);
+			printf("cam_hgt: %5.2f ", cam_hgt);
+			printf("\n");
 		}
 
 
 	}
 
-	//printf("scale_prediction: %5.2f ", scale_prediction);
+
 	rc_filter_march(&f->hpf, baro_at_ts);
-	rc_filter_march(&f->lpf, scale_prediction);
+	rc_filter_march(&f->lpf, cam_hgt);
 
 	// sum complementary filter
 	f->last_output = f->lpf.newest_output + f->hpf.newest_output;
+
+	// lower bound on output
+	if(f->last_output < f->min_hgt_to_estimate){
+		f->last_output = 0.0;
+	}
 
 
 	f->counter++;
