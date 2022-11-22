@@ -314,7 +314,7 @@ int rc_timed_ringbuf_get_val_at_time(rc_timed_ringbuf_t* buf, int64_t ts_ns, dou
 
 	// calculate interpolation constant t which is between 0 and 1.
 	// 0 would be right at tf_before, 1 would be right at tf_after.
-	double t = (ts_ns-val_before.ts_ns) / (val_after.ts_ns-val_before.ts_ns);
+	double t = (double)(ts_ns-val_before.ts_ns) / (double)(val_after.ts_ns-val_before.ts_ns);
 	double v1 = val_before.val;
 	double v2 = val_after.val;
 
