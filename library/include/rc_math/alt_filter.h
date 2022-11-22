@@ -21,8 +21,9 @@ typedef struct rc_alt_filter_t{
 	double feedback_constant;
 	int baro_buf_len;
 	double min_hgt_to_estimate;
-	double scale_inner_limit;
-	double scale_outer_limit;
+	double scale_inner_limit;	///< not not estimate alt when cam scale is inside 1+-inner_lim
+	double scale_outer_limit;	///< not not estimate alt when cam scale is outside 1+-outer_lim
+	double vel_lower_limit;		///< do not estimate altitude when velocity is below this
 
 	// state fields, read only
 	double odr_hz;			///< framerate of the optic flow camera
@@ -55,6 +56,7 @@ typedef struct rc_alt_filter_t{
 	.min_hgt_to_estimate = 0.5,\
 	.scale_inner_limit = 0.01,\
 	.scale_outer_limit = 0.1,\
+	.vel_lower_limit = 0.3,\
 	.initialized = 0,\
 	.lpf = RC_FILTER_INITIALIZER,\
 	.hpf = RC_FILTER_INITIALIZER,\

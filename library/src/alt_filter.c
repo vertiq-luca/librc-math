@@ -93,9 +93,10 @@ int rc_alt_filter_add_flow(rc_alt_filter_t* f, double scale, int64_t ts_ns)
 		f->is_valid = 0;
 		return -1;
 	}
-	// baro velocity at timestamp
+	// baro velocity at time between last two frames
 	double baro_v_at_ts;
-	if(rc_timed_ringbuf_get_val_at_time(&f->baro_v_buf, ts_ns, &baro_v_at_ts)){
+	int64_t v_ts = ts_ns - (f->dt * 500000000);
+	if(rc_timed_ringbuf_get_val_at_time(&f->baro_v_buf, v_ts, &baro_v_at_ts)){
 		f->is_valid = 0;
 		return -1;
 	}
@@ -107,22 +108,25 @@ int rc_alt_filter_add_flow(rc_alt_filter_t* f, double scale, int64_t ts_ns)
 
 	// height above ground as predicted by optic scale to go into HPF
 	double cam_hgt;
-	int is_scale_valid = 1;
+	int should_run_feedback = 1;
 
-	// check if we should use scale or not.
+	// check if we should do feedback or not.
 	double dist_from_one = fabs(scale - 1.0);
 
-	if(	dist_from_one > f->scale_outer_limit ||\
-		dist_from_one < f->scale_inner_limit ||\
-		f->last_output < f->min_hgt_to_estimate)
+	//  f->last_output < f->min_hgt_to_estimate
+
+	if(	dist_from_one  > f->scale_outer_limit	||\
+		dist_from_one  < f->scale_inner_limit	||\
+		fabs(baro_v_at_ts) < f->vel_lower_limit)
 	{
-		is_scale_valid = 0;
-		cam_hgt = f->lpf.newest_input + baro_v_at_ts*f->dt;
+		should_run_feedback = 0;
+		cam_hgt = baro_at_ts - f->current_ground_alt;
 	}
 	else{
-		// image shrinking means we are ascending.
+		// predict what our new height should be since the last frame based
+		// on the scale. image shrinking means we are ascending.
 		cam_hgt = f->last_output / scale;
-		is_scale_valid = 1;
+		should_run_feedback = 1;
 	}
 
 	if(f->counter == 0){
@@ -132,38 +136,34 @@ int rc_alt_filter_add_flow(rc_alt_filter_t* f, double scale, int64_t ts_ns)
 		rc_filter_prefill_outputs(&f->hpf, 0.0);
 	}
 
-	if(is_scale_valid){
+
+	double h_eq = 0.0;
+	double h_error = 0.0;
+	double feedback = 0.0;
+
+	if(should_run_feedback){
 
 		// height that would match the baro velocity at that scale.
-		double h_eq = (baro_v_at_ts * f->dt)/(1.0-scale);
-		double h_error = cam_hgt - h_eq;
+		h_eq = (baro_v_at_ts * f->dt)/(1.0-scale);
+		h_error = cam_hgt - h_eq;
 
 		// integrator not currently used, but there in case it's useful in the future
 		f->err_integrator += (h_error + f->last_error) * f->dt / 2;
 		f->last_error = h_error;
 
 		double gain = f->dt / f->feedback_constant;
-		double correction = h_error * gain;
+		feedback = h_error * gain;
 
 		// PI feedback, not used right now
-		//double correction = (f->err_integrator * gain) + (h_error * gain * 1.1);
+		//double feedback = (f->err_integrator * gain) + (h_error * gain * 1.1);
 
-		// ADD CORRECTION TO LPF
-		cam_hgt -= correction;
+		// ADD feedback TO LPF
+		cam_hgt -= feedback;
 
-		// never let the camera height drop below 0
-		if(cam_hgt<0) cam_hgt=0;
-
-		if(f->en_debug_prints){
-			printf("baro_v_at_ts: %5.2f ", baro_v_at_ts);
-			printf("h_eq: %5.2f ", h_eq);
-			printf("h_err: %5.2f ", h_error);
-			printf("correction: %6.3f ", correction);
-			printf("cam_hgt: %5.2f ", cam_hgt);
-			printf("\n");
+		// never let the camera height drop below min
+		if(cam_hgt < f->min_hgt_to_estimate){
+			cam_hgt = f->min_hgt_to_estimate;
 		}
-
-
 	}
 
 
@@ -173,9 +173,26 @@ int rc_alt_filter_add_flow(rc_alt_filter_t* f, double scale, int64_t ts_ns)
 	// sum complementary filter
 	f->last_output = f->lpf.newest_output + f->hpf.newest_output;
 
+	// when estimating altitude with camera, keep track of the baro alt
+	if(should_run_feedback){
+		f->current_ground_alt = baro_at_ts - f->last_output;
+	}
+
 	// lower bound on output
 	if(f->last_output < f->min_hgt_to_estimate){
 		f->last_output = 0.0;
+	}
+
+	if(f->en_debug_prints){
+		printf("v: %5.2f ", baro_v_at_ts);
+		printf(" h_eq: %5.2f", h_eq);
+		//printf(" h_err: %5.2f", h_error);
+		printf(" fb: %6.3f", feedback);
+		printf(" h_cam: %5.2f", cam_hgt);
+		printf(" h_cam_lpf: %5.2f", f->lpf.newest_output);
+		printf(" b_hpf: %5.2f", f->hpf.newest_output);
+		printf(" out: %5.2f", f->last_output);
+		//printf("\n");
 	}
 
 
