@@ -115,9 +115,15 @@ int rc_alt_filter_add_flow(rc_alt_filter_t* f, double scale, int64_t ts_ns)
 
 	//  f->last_output < f->min_hgt_to_estimate
 
+	// Reasons not to run feedback:
+	// - scale is too close to 1 (e.g. not moving)
+	// - baro reports too low a velocity (e.g. not moving)
+	// - velocity and scale contradict (opposite directions)
 	if(	dist_from_one  > f->scale_outer_limit	||\
 		dist_from_one  < f->scale_inner_limit	||\
-		fabs(baro_v_at_ts) < f->vel_lower_limit)
+		fabs(baro_v_at_ts) < f->vel_lower_limit	||\
+		(baro_v_at_ts>0 && scale>1.0)			||\
+		(baro_v_at_ts<0 && scale<1.0))
 	{
 		should_run_feedback = 0;
 		cam_hgt = baro_at_ts - f->current_ground_alt;
