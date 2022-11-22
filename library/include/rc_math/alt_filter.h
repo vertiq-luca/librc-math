@@ -80,7 +80,15 @@ int rc_alt_filter_init(rc_alt_filter_t* f, double odr_hz);
 // scale smaller than 1 means ascending
 int rc_alt_filter_add_flow(rc_alt_filter_t* f, double scale, int64_t ts_ns);
 
+// add a barometer height estimate, such as relative or monotonic fields in
+// the mavlink altitude message
 int rc_alt_filter_add_baro(rc_alt_filter_t* f, double alt_m, int64_t ts_ns);
+
+// velocity should be sourced from ekf2 through something like the
+// local_position_ned vs field. NOTE that you should reverse the sign of vz if
+// using local_position_ned since local position has Z pointing down whereas
+// the barometer altitude increases with altitude!!!
+int rc_alt_filter_add_vel(rc_alt_filter_t* f, double v_up, int64_t ts_ns);
 
 
 #ifdef __cplusplus

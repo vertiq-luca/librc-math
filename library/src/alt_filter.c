@@ -1,6 +1,7 @@
 
 
 #include <stdio.h>
+#include <math.h>
 #include <rc_math/alt_filter.h>
 
 
@@ -56,9 +57,6 @@ int rc_alt_filter_init(rc_alt_filter_t* f, double odr_hz)
 
 int rc_alt_filter_add_baro(rc_alt_filter_t* f, double alt_m, int64_t ts_ns)
 {
-	static double last_alt_m;
-	static int64_t last_ts_ns = 0;
-
 	if(!f->initialized){
 		fprintf(stderr,"ERROR in %s, filter not initialized\n", __FUNCTION__);
 		return -1;
@@ -67,15 +65,17 @@ int rc_alt_filter_add_baro(rc_alt_filter_t* f, double alt_m, int64_t ts_ns)
 	// insert into altitude buffer
 	rc_timed_ringbuf_insert(&f->baro_buf, ts_ns, alt_m);
 
-	if(last_ts_ns != 0){
-		double dt = (ts_ns - last_ts_ns) / 1000000000.0;
-		double v = (alt_m - last_alt_m)/ dt;
-		rc_timed_ringbuf_insert(&f->baro_v_buf, (ts_ns + last_ts_ns)/2, v);
+	return 0;
+}
+
+
+int rc_alt_filter_add_vel(rc_alt_filter_t* f, double v_up, int64_t ts_ns)
+{
+	if(!f->initialized){
+		fprintf(stderr,"ERROR in %s, filter not initialized\n", __FUNCTION__);
+		return -1;
 	}
-
-	last_ts_ns = ts_ns;
-	last_alt_m = alt_m;
-
+	rc_timed_ringbuf_insert(&f->baro_v_buf, ts_ns, v_up);
 	return 0;
 }
 
