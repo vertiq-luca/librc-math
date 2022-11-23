@@ -136,7 +136,7 @@ int rc_loop_sleep(double rate_hz, int64_t* next_time)
 
     // uh oh, we fell behind, warn and get back on track
     if(*next_time<=current_time){
-        fprintf(stderr, "WARNING my_loop_sleep fell behind\n");
+        //fprintf(stderr, "WARNING my_loop_sleep fell behind\n");
         return -1;
     }
 
