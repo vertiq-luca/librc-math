@@ -90,6 +90,9 @@ int rc_alt_filter_add_flow(rc_alt_filter_t* f, double scale, int64_t ts_ns)
 	// baro height at timestamp
 	double baro_at_ts;
 	if(rc_timed_ringbuf_get_val_at_time(&f->baro_buf, ts_ns, &baro_at_ts)){
+		if(f->en_debug_prints){
+			printf("failed to get baro height\n");
+		}
 		f->is_valid = 0;
 		return -1;
 	}
@@ -97,6 +100,9 @@ int rc_alt_filter_add_flow(rc_alt_filter_t* f, double scale, int64_t ts_ns)
 	double baro_v_at_ts;
 	int64_t v_ts = ts_ns - (f->dt * 500000000);
 	if(rc_timed_ringbuf_get_val_at_time(&f->baro_v_buf, v_ts, &baro_v_at_ts)){
+		if(f->en_debug_prints){
+			printf("failed to get baro velocity\n");
+		}
 		f->is_valid = 0;
 		return -1;
 	}
@@ -165,13 +171,12 @@ int rc_alt_filter_add_flow(rc_alt_filter_t* f, double scale, int64_t ts_ns)
 
 		// ADD feedback TO LPF
 		cam_hgt -= feedback;
-
-		// never let the camera height drop below min
-		if(cam_hgt < f->min_hgt_to_estimate){
-			cam_hgt = f->min_hgt_to_estimate;
-		}
 	}
 
+	// never let the camera height drop below min
+	if(cam_hgt < f->min_hgt_to_estimate){
+		cam_hgt = f->min_hgt_to_estimate;
+	}
 
 	rc_filter_march(&f->hpf, baro_at_ts);
 	rc_filter_march(&f->lpf, cam_hgt);
@@ -190,14 +195,16 @@ int rc_alt_filter_add_flow(rc_alt_filter_t* f, double scale, int64_t ts_ns)
 	}
 
 	if(f->en_debug_prints){
-		printf("v: %5.2f ", baro_v_at_ts);
-		printf(" h_eq: %5.2f", h_eq);
+		printf("scl:%5.2f ", scale);
+		printf(" v:%5.2f ", baro_v_at_ts);
+		printf("  h_eq:%5.2f", h_eq);
 		//printf(" h_err: %5.2f", h_error);
-		printf(" fb: %6.3f", feedback);
-		printf(" h_cam: %5.2f", cam_hgt);
-		printf(" h_cam_lpf: %5.2f", f->lpf.newest_output);
-		printf(" b_hpf: %5.2f", f->hpf.newest_output);
-		printf(" out: %5.2f", f->last_output);
+		printf("  fb:%5.2f", feedback);
+		printf("  hcam:%5.1f", cam_hgt);
+		printf("  clpf:%5.1f", f->lpf.newest_output);
+		printf("  hbar:%5.1f", baro_at_ts);
+		printf("  bhpf:%5.1f", f->hpf.newest_output);
+		printf("  out:%5.1f", f->last_output);
 		//printf("\n");
 	}
 
