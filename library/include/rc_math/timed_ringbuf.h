@@ -123,6 +123,24 @@ int rc_timed_ringbuf_get_pos_b4_ts(rc_timed_ringbuf_t* buf, int64_t ts_ns);
  */
 int rc_timed_ringbuf_get_entry_at_pos(rc_timed_ringbuf_t* buf, int position, rc_ts_dbl_t* result);
 
+/**
+ * @brief      fetch the value which is 'position' steps behind
+ *             the last value added to the buffer.
+ *
+ *             If 'position' is given as 0 then the most recent entry is
+ *             returned. The position obviously can't be larger than size-1.
+ *             This will also check and silently return -2 if the buffer hasn't
+ *             been filled up enough to go back that far in time.
+ *
+ * @param      buf       The buffer
+ * @param[in]  position  The position
+ * @param      result    The result
+ *
+ * @return     0 on success, -1 on generic error, -2 if the buffer does not
+ *             contain enough data yet
+ */
+int rc_timed_ringbuf_get_val_at_pos(rc_timed_ringbuf_t* buf, int position, double* result);
+
 
 /**
  * @brief      fetches a value at a requested timestamp using linear

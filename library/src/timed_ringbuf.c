@@ -151,6 +151,41 @@ int rc_timed_ringbuf_get_entry_at_pos(rc_timed_ringbuf_t* buf, int position, rc_
 	return 0;
 }
 
+
+int rc_timed_ringbuf_get_val_at_pos(rc_timed_ringbuf_t* buf, int position, double* val)
+{
+	int return_index;
+	// sanity checks
+	if(unlikely(buf==NULL || val==NULL)){
+		fprintf(stderr,"ERROR in %s, received NULL pointer\n", __FUNCTION__);
+		return -1;
+	}
+	if(unlikely(position<0 || (position>buf->size-1))){
+		fprintf(stderr,"ERROR in %s, position out of bounds\n", __FUNCTION__);
+		return -1;
+	}
+	if(unlikely(!buf->initialized)){
+		fprintf(stderr,"ERROR in %s, ringbuf uninitialized\n", __FUNCTION__);
+		return -1;
+	}
+	// silently return if user requested an item that hasn't been added yet
+	if(position>=buf->items_in_buf){
+		//fprintf(stderr,"ERROR in rc_ringbuf_get_entry_at_pos %d, not enough entries\n", position);
+		return -2;
+	}
+
+	pthread_mutex_lock(&buf->mutex);
+	return_index=buf->index-position;
+
+	// check for looparound
+	if(return_index<0) return_index+=buf->size;
+	*val = buf->d[return_index].val;
+
+	pthread_mutex_unlock(&buf->mutex);
+	return 0;
+}
+
+
 /**
  * @brief      Fetches the timestamp which is 'position' steps behind the last
  *             value added to the buffer.
