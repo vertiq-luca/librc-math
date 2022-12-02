@@ -95,6 +95,17 @@ int rc_timed_ringbuf_insert(rc_timed_ringbuf_t* buf, int64_t ts_ns, double val);
 
 
 /**
+ * @brief      return the position in the buffer of the entry at or immediately
+ *             before a specified timestamp;
+ *
+ * @param      buf    The buffer
+ * @param[in]  ts_ns  timestamp
+ *
+ * @return     requested position, or -1 on error, -2 if not found
+ */
+int rc_timed_ringbuf_get_pos_b4_ts(rc_timed_ringbuf_t* buf, int64_t ts_ns);
+
+/**
  * @brief      fetch the value and timestamp which is 'position' steps behind
  *             the last value added to the buffer.
  *

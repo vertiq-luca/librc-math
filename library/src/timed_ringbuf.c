@@ -173,7 +173,6 @@ int rc_timed_ringbuf_get_entry_at_pos(rc_timed_ringbuf_t* buf, int position, rc_
  */
 static int64_t __get_ts_at_pos(rc_timed_ringbuf_t* buf, int position)
 {
-	int return_index;
 	// sanity checks
 	if(unlikely(buf==NULL)){
 		fprintf(stderr,"ERROR in %s, received NULL pointer\n", __FUNCTION__);
@@ -193,13 +192,43 @@ static int64_t __get_ts_at_pos(rc_timed_ringbuf_t* buf, int position)
 		return -2;
 	}
 
-	return_index=buf->index-position;
+	int return_index = buf->index-position;
 	// check for looparound
 	if(return_index<0) return_index+=buf->size;
 	int64_t ret = buf->d[return_index].ts_ns;
 
 	return ret;
 }
+
+
+
+int rc_timed_ringbuf_get_pos_b4_ts(rc_timed_ringbuf_t* buf, int64_t ts)
+{
+	// sanity checks
+	if(unlikely(buf==NULL)){
+		fprintf(stderr,"ERROR in %s, received NULL pointer\n", __FUNCTION__);
+		return -1;
+	}
+	if(unlikely(!buf->initialized)){
+		fprintf(stderr,"ERROR in %s, ringbuf uninitialized\n", __FUNCTION__);
+		return -1;
+	}
+
+	pthread_mutex_lock(&buf->mutex);
+
+	for(int i=0; i<buf->items_in_buf; i++){
+		int64_t tmp = __get_ts_at_pos(buf, i);
+		if(tmp<=ts){
+			pthread_mutex_unlock(&buf->mutex);
+			return i;
+		}
+	}
+
+	pthread_mutex_unlock(&buf->mutex);
+	return -2;
+}
+
+
 
 
 int rc_timed_ringbuf_get_val_at_time(rc_timed_ringbuf_t* buf, int64_t ts_ns, double* val)
