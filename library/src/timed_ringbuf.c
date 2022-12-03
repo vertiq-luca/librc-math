@@ -458,3 +458,38 @@ int rc_timed_ringbuf_integrate_over_time(rc_timed_ringbuf_t* buf, int64_t t_star
 	return 0;
 }
 
+/*
+int f32_ringbuf_copy_out_n_newest(f32_ringbuf_t* buf, int n, float* out)
+{
+	// sanity checks
+	if(unlikely(buf==NULL)){
+		fprintf(stderr,"ERROR in %s, received NULL pointer\n", __FUNCTION__);
+		return -1;
+	}
+	if(unlikely(n<1 || n>buf->size)){
+		fprintf(stderr,"ERROR in %s, position out of bounds\n", __FUNCTION__);
+		return -1;
+	}
+	if(unlikely(!buf->initialized)){
+		fprintf(stderr,"ERROR in %s, ringbuf uninitialized\n", __FUNCTION__);
+		return -1;
+	}
+
+	// find where to start copying from
+	int start = buf->index - n + 1;
+	if(start<0) start += buf->size;
+
+	// copy the first chunk from oldest data
+	int n_first_copy = buf->size-start;
+	if(n_first_copy>n) n_first_copy = n;
+	memcpy(out, &buf->d[start], n_first_copy*sizeof(float));
+
+	// see if a second copy is needed due to wrap
+	if(n_first_copy < n){
+		int n_second_copy = n-n_first_copy;
+		memcpy(&out[n_first_copy], buf->d, n_second_copy*sizeof(float));
+	}
+
+	return 0;
+}
+*/
