@@ -161,6 +161,25 @@ int rc_timed_ringbuf_get_val_at_pos(rc_timed_ringbuf_t* buf, int position, doubl
 int rc_timed_ringbuf_get_val_at_time(rc_timed_ringbuf_t* buf, int64_t ts_ns, double* val);
 
 
+
+/**
+ * @brief      integrate the signal in the ringbuf between two given times
+ *
+ * NOTE this is originally for integrating high-rate gyro data over long periods
+ * where +- a sample is negligible. As such, it integrates from the gyro sample
+ * immediately after or at t1 to the sample immediately after or at t2.
+ *
+ * This uses trapezoidal integration.
+ *
+ * @param      buf       The buffer
+ * @param[in]  t1        start time (older than t2)
+ * @param[in]  t2        end time (after t1)
+ * @param      integral  output integral
+ *
+ * @return     0 on success, -1 on general error, -2 if sample at t1 was not found, -3 if sample at t2 was not found
+ */
+int rc_timed_ringbuf_integrate_over_time(rc_timed_ringbuf_t* buf, int64_t t1, int64_t t2, double* integral);
+
 #ifdef __cplusplus
 }
 #endif

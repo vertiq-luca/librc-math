@@ -51,7 +51,7 @@ typedef struct rc_alt_filter_t{
 	.odr_hz = 0.0,\
 	.dt = 0.0,\
 	.crossover_filter_constant = 1.0,\
-	.feedback_constant = 0.2,\
+	.feedback_constant = 1.0,\
 	.baro_buf_len = 100,\
 	.min_hgt_to_estimate = 0.5,\
 	.scale_inner_limit = 0.01,\

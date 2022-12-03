@@ -25,6 +25,7 @@
 #include <rc_math/quaternion.h>
 #include <rc_math/ring_buffer.h>
 #include <rc_math/timestamp_filter.h>
+#include <rc_math/timed_ringbuf.h>
 #include <rc_math/vector.h>
 
 #endif // RC_MATH_H

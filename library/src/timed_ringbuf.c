@@ -387,3 +387,54 @@ int rc_timed_ringbuf_get_val_at_time(rc_timed_ringbuf_t* buf, int64_t ts_ns, dou
 	return 0;
 }
 
+
+// TODO optimize this, just got it working for now
+int rc_timed_ringbuf_integrate_over_time(rc_timed_ringbuf_t* buf, int64_t t1, int64_t t2, double* integral)
+{
+	// sanity checks
+	if(unlikely(buf==NULL)){
+		fprintf(stderr,"ERROR in %s, received NULL pointer\n", __FUNCTION__);
+		return -1;
+	}
+	if(unlikely(!buf->initialized)){
+		fprintf(stderr,"ERROR in %s, ringbuf uninitialized\n", __FUNCTION__);
+		return -1;
+	}
+	if(t1>=t2){
+		fprintf(stderr,"ERROR in %s, t1 must be older than t2\n", __FUNCTION__);
+		return -1;
+	}
+
+	int pos_start = rc_timed_ringbuf_get_pos_b4_ts(buf, t1);
+	if(pos_start<0) return -2;
+	int pos_end = rc_timed_ringbuf_get_pos_b4_ts(buf, t2);
+	if(pos_end<0) return -3;
+
+
+
+	double accumulator = 0;
+	*integral = accumulator;
+
+	rc_ts_dbl_t x1, x2;
+	if(rc_timed_ringbuf_get_entry_at_pos(buf, pos_start, &x1)){
+		fprintf(stderr,"ERROR in %s\n", __FUNCTION__);
+		return -1;
+	}
+
+	for(int i=(pos_start-1); i>=pos_end; i--){
+
+		if(rc_timed_ringbuf_get_entry_at_pos(buf, i, &x2)){
+			fprintf(stderr,"ERROR in %s\n", __FUNCTION__);
+			return -1;
+		}
+
+		double dt_s = (double)(x2.ts_ns - x1.ts_ns)/1000000000.0;
+		accumulator += dt_s * (x1.val + x2.val)/2.0;
+		x1 = x2;
+
+	}
+
+	*integral = accumulator;
+	return 0;
+}
+

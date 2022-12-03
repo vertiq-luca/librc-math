@@ -271,21 +271,36 @@ int main(int argc, char* argv[])
 		if(ts_start==0) ts_start = ts;
 
 		// extract the bits we are interested in;
-		//double ts_s = (double)(ts-ts_start)/1000000000.0;
+		double ts_s = (double)(ts-ts_start)/1000000000.0;
 		double scale = p.T_child_wrt_parent[0];
 		double z_deriv = p.T_child_wrt_parent[1];
 		double baro_hgt = p.T_child_wrt_parent[2];
 
+
+
+
+
+		// old log had bad readings report 1.0 exactly for scale when there was
+		// a bad track. Convert to new method of reporting 0
+
+
 		if(_isfinite(scale)){
+			if(scale==1.0){
+				scale = 0.0;
+			}
+			printf("t:%5.1f ", ts_s);
 			rc_alt_filter_add_flow(&f, scale, ts);
 			printf("\n");
 		}
 
+
 		if(_isfinite(z_deriv)){
+			//printf("vel ");
 			rc_alt_filter_add_vel(&f, z_deriv, ts);
 		}
 
 		if(_isfinite(baro_hgt)){
+			//printf("baro ");
 			rc_alt_filter_add_baro(&f, baro_hgt, ts);
 		}
 

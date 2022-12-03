@@ -113,33 +113,36 @@ int rc_alt_filter_add_flow(rc_alt_filter_t* f, double scale, int64_t ts_ns)
 
 
 	// height above ground as predicted by optic scale to go into HPF
-	double cam_hgt;
-	int should_run_feedback = 1;
+	// image shrinking means we are ascending.
+	double cam_hgt = f->last_output / scale;
+	int should_run_feedback = 0;
+	int should_run_passthrough = 0;
 
-	// check if we should do feedback or not.
-	double dist_from_one = fabs(scale - 1.0);
-
-	//  f->last_output < f->min_hgt_to_estimate
 
 	// Reasons not to run feedback:
 	// - scale is too close to 1 (e.g. not moving)
 	// - baro reports too low a velocity (e.g. not moving)
 	// - velocity and scale contradict (opposite directions)
-	if(	dist_from_one  > f->scale_outer_limit	||\
-		dist_from_one  < f->scale_inner_limit	||\
-		fabs(baro_v_at_ts) < f->vel_lower_limit	||\
+	double dist_from_one = fabs(scale - 1.0);
+	if(dist_from_one  > f->scale_outer_limit){
+
+		should_run_feedback = 0;
+		should_run_passthrough = 1;
+	}
+
+	if(dist_from_one  < f->scale_inner_limit){
+		should_run_feedback = 0;
+	}
+
+	if(	fabs(baro_v_at_ts) < f->vel_lower_limit	||\
 		(baro_v_at_ts>0 && scale>1.0)			||\
 		(baro_v_at_ts<0 && scale<1.0))
 	{
 		should_run_feedback = 0;
-		cam_hgt = baro_at_ts - f->current_ground_alt;
+		should_run_passthrough = 1;
 	}
-	else{
-		// predict what our new height should be since the last frame based
-		// on the scale. image shrinking means we are ascending.
-		cam_hgt = f->last_output / scale;
-		should_run_feedback = 1;
-	}
+
+
 
 	if(f->counter == 0){
 		rc_filter_prefill_inputs( &f->lpf, 0.0);
@@ -173,6 +176,11 @@ int rc_alt_filter_add_flow(rc_alt_filter_t* f, double scale, int64_t ts_ns)
 		cam_hgt -= feedback;
 	}
 
+	if(should_run_passthrough){
+		cam_hgt = baro_at_ts - f->current_ground_alt;
+	}
+
+
 	// never let the camera height drop below min
 	if(cam_hgt < f->min_hgt_to_estimate){
 		cam_hgt = f->min_hgt_to_estimate;
@@ -195,8 +203,9 @@ int rc_alt_filter_add_flow(rc_alt_filter_t* f, double scale, int64_t ts_ns)
 	}
 
 	if(f->en_debug_prints){
-		printf("scl:%5.2f ", scale);
-		printf(" v:%5.2f ", baro_v_at_ts);
+		printf("scl:%5.2f", scale);
+		printf(" fb/pt: %d%d", should_run_feedback, should_run_passthrough);
+		printf(" v:%5.2f", baro_v_at_ts);
 		printf("  h_eq:%5.2f", h_eq);
 		//printf(" h_err: %5.2f", h_error);
 		printf("  fb:%5.2f", feedback);
