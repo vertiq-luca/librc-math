@@ -44,8 +44,9 @@ int rc_timed_ringbuf_alloc(rc_timed_ringbuf_t* buf, int size)
 	buf->items_in_buf = 0;
 	buf->initialized = 0;
 	// allocate mem for array
-	buf->d = (rc_ts_dbl_t*)calloc(size,sizeof(rc_ts_dbl_t));
-	if(buf->d==NULL){
+	buf->d = (double*)calloc(size,sizeof(double));
+	buf->t = (int64_t*)calloc(size,sizeof(int64_t));
+	if(buf->d==NULL || buf->t==NULL){
 		fprintf(stderr,"ERROR in %s, failed to allocate memory\n", __FUNCTION__);
 		return -1;
 	}
@@ -65,6 +66,7 @@ int rc_timed_ringbuf_free(rc_timed_ringbuf_t* buf)
 	}
 	if(buf->initialized){
 		free(buf->d);
+		free(buf->t);
 		// put buffer back to default
 		*buf = new;
 	}
@@ -95,7 +97,7 @@ int rc_timed_ringbuf_insert(rc_timed_ringbuf_t* buf, int64_t ts_ns, double val)
 		new_index=0;
 	}
 	else{
-		if(ts_ns<=buf->d[buf->index].ts_ns){
+		if(ts_ns<=buf->t[buf->index]){
 			fprintf(stderr,"ERROR in %s, timestamp out of order\n", __FUNCTION__);
 			pthread_mutex_unlock(&buf->mutex);
 			return -1;
@@ -105,8 +107,8 @@ int rc_timed_ringbuf_insert(rc_timed_ringbuf_t* buf, int64_t ts_ns, double val)
 	}
 
 	// write out new value
-	buf->d[new_index].ts_ns  = ts_ns;
-	buf->d[new_index].val = val;
+	buf->t[new_index] = ts_ns;
+	buf->d[new_index] = val;
 	// bump index
 	buf->index=new_index;
 	// increment number of items if necessary
@@ -118,11 +120,11 @@ int rc_timed_ringbuf_insert(rc_timed_ringbuf_t* buf, int64_t ts_ns, double val)
 }
 
 
-int rc_timed_ringbuf_get_entry_at_pos(rc_timed_ringbuf_t* buf, int position, rc_ts_dbl_t* result)
+int rc_timed_ringbuf_get_ts_at_pos(rc_timed_ringbuf_t* buf, int position, int64_t* ts)
 {
 	int return_index;
 	// sanity checks
-	if(unlikely(buf==NULL || result==NULL)){
+	if(unlikely(buf==NULL || ts==NULL)){
 		fprintf(stderr,"ERROR in %s, received NULL pointer\n", __FUNCTION__);
 		return -1;
 	}
@@ -136,16 +138,16 @@ int rc_timed_ringbuf_get_entry_at_pos(rc_timed_ringbuf_t* buf, int position, rc_
 	}
 	// silently return if user requested an item that hasn't been added yet
 	if(position>=buf->items_in_buf){
-		//fprintf(stderr,"ERROR in rc_ringbuf_get_entry_at_pos %d, not enough entries\n", position);
 		return -2;
 	}
 
 	pthread_mutex_lock(&buf->mutex);
-	return_index=buf->index-position;
 
-	// check for looparound
+	// convert position to index, check for looparound
+	return_index=buf->index-position;
 	if(return_index<0) return_index+=buf->size;
-	*result = buf->d[return_index];
+
+	*ts = buf->t[return_index];
 
 	pthread_mutex_unlock(&buf->mutex);
 	return 0;
@@ -170,16 +172,16 @@ int rc_timed_ringbuf_get_val_at_pos(rc_timed_ringbuf_t* buf, int position, doubl
 	}
 	// silently return if user requested an item that hasn't been added yet
 	if(position>=buf->items_in_buf){
-		//fprintf(stderr,"ERROR in rc_ringbuf_get_entry_at_pos %d, not enough entries\n", position);
 		return -2;
 	}
 
 	pthread_mutex_lock(&buf->mutex);
-	return_index=buf->index-position;
 
-	// check for looparound
+	// convert position to index, check for looparound
+	return_index=buf->index-position;
 	if(return_index<0) return_index+=buf->size;
-	*val = buf->d[return_index].val;
+
+	*val = buf->d[return_index];
 
 	pthread_mutex_unlock(&buf->mutex);
 	return 0;
@@ -206,7 +208,7 @@ int rc_timed_ringbuf_get_val_at_pos(rc_timed_ringbuf_t* buf, int position, doubl
  *             enough entries to go back to requested position, -1 on other
  *             error
  */
-static int64_t __get_ts_at_pos(rc_timed_ringbuf_t* buf, int position)
+static int64_t _get_ts_at_pos_nolock(rc_timed_ringbuf_t* buf, int position)
 {
 	// sanity checks
 	if(unlikely(buf==NULL)){
@@ -223,16 +225,15 @@ static int64_t __get_ts_at_pos(rc_timed_ringbuf_t* buf, int position)
 	}
 	// silently return if user requested an item that hasn't been added yet
 	if(position>=buf->items_in_buf){
-		//fprintf(stderr,"ERROR in rc_ringbuf_get_timestamp_at_pos %d, not enough entries\n", position);
 		return -2;
 	}
 
-	int return_index = buf->index-position;
-	// check for looparound
-	if(return_index<0) return_index+=buf->size;
-	int64_t ret = buf->d[return_index].ts_ns;
 
-	return ret;
+	// check for looparound
+	int return_index = buf->index-position;
+	if(return_index<0) return_index+=buf->size;
+
+	return buf->t[return_index];
 }
 
 
@@ -252,7 +253,7 @@ int rc_timed_ringbuf_get_pos_b4_ts(rc_timed_ringbuf_t* buf, int64_t ts)
 	pthread_mutex_lock(&buf->mutex);
 
 	for(int i=0; i<buf->items_in_buf; i++){
-		int64_t tmp = __get_ts_at_pos(buf, i);
+		int64_t tmp = _get_ts_at_pos_nolock(buf, i);
 		if(tmp<=ts){
 			pthread_mutex_unlock(&buf->mutex);
 			return i;
@@ -270,9 +271,8 @@ int rc_timed_ringbuf_get_val_at_time(rc_timed_ringbuf_t* buf, int64_t ts_ns, dou
 {
 	int i;
 	int found = 0;
-	static rc_ts_dbl_t val_before;
-	static rc_ts_dbl_t val_after;
-	int64_t tmp;
+	int64_t t1, t2;
+	double x1, x2;
 
 	// sanity checks
 	if(unlikely(buf==NULL)){
@@ -294,22 +294,31 @@ int rc_timed_ringbuf_get_val_at_time(rc_timed_ringbuf_t* buf, int64_t ts_ns, dou
 		return -2;
 	}
 	// allow timestamps up to 0.2s newer than our last position record
-	int64_t latest_ts = __get_ts_at_pos(buf,0);
+	int64_t latest_ts = _get_ts_at_pos_nolock(buf,0);
 	if(ts_ns > (latest_ts+buf->forward_limit)){
 		fprintf(stderr,"ERROR in %s, requested timestamp too new\n", __FUNCTION__);
-		fprintf(stderr,"Requested time %7.2fs newer than latest data\n", (double)(ts_ns-__get_ts_at_pos(buf,0))/1000000000.0);
+		fprintf(stderr,"Requested time %7.2fs newer than latest data\n", (double)(ts_ns-_get_ts_at_pos_nolock(buf,0))/1000000000.0);
 		return -3;
 	}
 
 	// check for timestamp newer than we have record of, if so, extrapolate given
 	// the two most recent records
 	if(ts_ns > latest_ts){
-		if(unlikely(rc_timed_ringbuf_get_entry_at_pos(buf, 1,   &val_before))){
-			fprintf(stderr,"ERROR in %s, failed to fetch entry 0\n", __FUNCTION__);
+
+		if(unlikely(rc_timed_ringbuf_get_val_at_pos(buf, 1, &x1))){
+			fprintf(stderr,"ERROR in %s, failed to fetch entry before ts\n", __FUNCTION__);
 			return -1;
 		}
-		if(unlikely(rc_timed_ringbuf_get_entry_at_pos(buf, 0, &val_after))){
-			fprintf(stderr,"ERROR in %s, failed to fetch entry 1\n", __FUNCTION__);
+		if(unlikely(rc_timed_ringbuf_get_ts_at_pos(buf, 1,  &t1))){
+			fprintf(stderr,"ERROR in %s, failed to fetch entry before ts\n", __FUNCTION__);
+			return -1;
+		}
+		if(unlikely(rc_timed_ringbuf_get_val_at_pos(buf, 0, &x2))){
+			fprintf(stderr,"ERROR in %s, failed to fetch entry after ts\n", __FUNCTION__);
+			return -1;
+		}
+		if(unlikely(rc_timed_ringbuf_get_ts_at_pos(buf, 0, &t2))){
+			fprintf(stderr,"ERROR in %s, failed to fetch entry after ts\n", __FUNCTION__);
 			return -1;
 		}
 		found = 1;
@@ -317,27 +326,26 @@ int rc_timed_ringbuf_get_val_at_time(rc_timed_ringbuf_t* buf, int64_t ts_ns, dou
 	else{
 		// now go searching through the buffer to find which two entries to interpolate between
 		for(i=0;i<buf->items_in_buf;i++){
-			tmp = __get_ts_at_pos(buf,i);
+			t1 = _get_ts_at_pos_nolock(buf,i);
 
 			// check for error
-			if(tmp<=0){
+			if(t1<=0){
 				fprintf(stderr,"ERROR in %s, found unpopulated entry at position%d\n", __FUNCTION__, i);
 				return -1;
 			}
 
 			// found the right value! no interpolation needed
-			if(tmp == ts_ns){
-				if(unlikely(rc_timed_ringbuf_get_entry_at_pos(buf, i, &val_before))){
+			if(t1 == ts_ns){
+				if(unlikely(rc_timed_ringbuf_get_val_at_pos(buf, i, val))){
 					fprintf(stderr,"ERROR in %s, failed to fetch entry at ts\n", __FUNCTION__);
 					return -1;
 				}
-				*val = val_before.val;
 				return 0;
 			}
 
 			// once we get a timestamp older than requested ts, we have found the
 			// right interval, grab the appropriate transforms
-			if(tmp<ts_ns){
+			if(t1<ts_ns){
 				// if this condition is met on the newest entry in the buffer where
 				// position=0 then the user is asking for data that's in the future
 				// or at least newer than the buffer is aware of.
@@ -351,18 +359,22 @@ int rc_timed_ringbuf_get_val_at_time(rc_timed_ringbuf_t* buf, int64_t ts_ns, dou
 				// This step should be older than requested ts, make sure the next
 				// entry is actually newer, it should be if data went into the
 				// buffer monotonically
-				if(__get_ts_at_pos(buf,i-1)<ts_ns){
+				if(_get_ts_at_pos_nolock(buf,i-1)<ts_ns){
 					fprintf(stderr,"ERROR in %s, bad timestamp found\n", __FUNCTION__);
 					return -1;
 				}
 
 				// these fetches shouldn't fail since we already got the timestamp
 				// at this position.
-				if(unlikely(rc_timed_ringbuf_get_entry_at_pos(buf, i,   &val_before))){
+				if(unlikely(rc_timed_ringbuf_get_val_at_pos(buf, i,   &x1))){
 					fprintf(stderr,"ERROR in %s, failed to fetch entry before ts\n", __FUNCTION__);
 					return -1;
 				}
-				if(unlikely(rc_timed_ringbuf_get_entry_at_pos(buf, i-1, &val_after))){
+				if(unlikely(rc_timed_ringbuf_get_val_at_pos(buf, i-1, &x2))){
+					fprintf(stderr,"ERROR in %s, failed to fetch entry after ts\n", __FUNCTION__);
+					return -1;
+				}
+				if(unlikely(rc_timed_ringbuf_get_ts_at_pos(buf, i-1, &t2))){
 					fprintf(stderr,"ERROR in %s, failed to fetch entry after ts\n", __FUNCTION__);
 					return -1;
 				}
@@ -378,18 +390,15 @@ int rc_timed_ringbuf_get_val_at_time(rc_timed_ringbuf_t* buf, int64_t ts_ns, dou
 
 	// calculate interpolation constant t which is between 0 and 1.
 	// 0 would be right at tf_before, 1 would be right at tf_after.
-	double t = (double)(ts_ns-val_before.ts_ns) / (double)(val_after.ts_ns-val_before.ts_ns);
-	double v1 = val_before.val;
-	double v2 = val_after.val;
-
-	*val = v1 + (t*(v2-v1));
+	double t = (double)(ts_ns-t1) / (double)(t2-t1);
+	*val = x1 + (t*(x2-x1));
 
 	return 0;
 }
 
 
 // TODO optimize this, just got it working for now
-int rc_timed_ringbuf_integrate_over_time(rc_timed_ringbuf_t* buf, int64_t t1, int64_t t2, double* integral)
+int rc_timed_ringbuf_integrate_over_time(rc_timed_ringbuf_t* buf, int64_t t_start, int64_t t_end, double* integral)
 {
 	// sanity checks
 	if(unlikely(buf==NULL)){
@@ -400,14 +409,14 @@ int rc_timed_ringbuf_integrate_over_time(rc_timed_ringbuf_t* buf, int64_t t1, in
 		fprintf(stderr,"ERROR in %s, ringbuf uninitialized\n", __FUNCTION__);
 		return -1;
 	}
-	if(t1>=t2){
-		fprintf(stderr,"ERROR in %s, t1 must be older than t2\n", __FUNCTION__);
+	if(t_start>=t_end){
+		fprintf(stderr,"ERROR in %s, t_start must be older than t_end\n", __FUNCTION__);
 		return -1;
 	}
 
-	int pos_start = rc_timed_ringbuf_get_pos_b4_ts(buf, t1);
+	int pos_start = rc_timed_ringbuf_get_pos_b4_ts(buf, t_start);
 	if(pos_start<0) return -2;
-	int pos_end = rc_timed_ringbuf_get_pos_b4_ts(buf, t2);
+	int pos_end = rc_timed_ringbuf_get_pos_b4_ts(buf, t_end);
 	if(pos_end<0) return -3;
 
 
@@ -415,22 +424,33 @@ int rc_timed_ringbuf_integrate_over_time(rc_timed_ringbuf_t* buf, int64_t t1, in
 	double accumulator = 0;
 	*integral = accumulator;
 
-	rc_ts_dbl_t x1, x2;
-	if(rc_timed_ringbuf_get_entry_at_pos(buf, pos_start, &x1)){
+	int64_t t1, t2;
+	double x1, x2;
+
+	if(rc_timed_ringbuf_get_ts_at_pos(buf, pos_start, &t1)){
+		fprintf(stderr,"ERROR in %s\n", __FUNCTION__);
+		return -1;
+	}
+	if(rc_timed_ringbuf_get_val_at_pos(buf, pos_start, &x1)){
 		fprintf(stderr,"ERROR in %s\n", __FUNCTION__);
 		return -1;
 	}
 
 	for(int i=(pos_start-1); i>=pos_end; i--){
 
-		if(rc_timed_ringbuf_get_entry_at_pos(buf, i, &x2)){
+		if(rc_timed_ringbuf_get_ts_at_pos(buf, i, &t2)){
+			fprintf(stderr,"ERROR in %s\n", __FUNCTION__);
+			return -1;
+		}
+		if(rc_timed_ringbuf_get_val_at_pos(buf, i, &x2)){
 			fprintf(stderr,"ERROR in %s\n", __FUNCTION__);
 			return -1;
 		}
 
-		double dt_s = (double)(x2.ts_ns - x1.ts_ns)/1000000000.0;
-		accumulator += dt_s * (x1.val + x2.val)/2.0;
+		double dt_s = (double)(t2 - t1)/1000000000.0;
+		accumulator += dt_s * (x1 + x2)/2.0;
 		x1 = x2;
+		t1 = t2;
 
 	}
 

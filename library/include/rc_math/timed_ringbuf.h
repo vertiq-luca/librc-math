@@ -11,15 +11,11 @@ extern "C" {
 #include <stdint.h>
 #include <pthread.h>
 
-typedef struct rc_ts_dbl_t {
-	int64_t ts_ns;
-	double val;
-} rc_ts_dbl_t;
-
 
 
 typedef struct rc_timed_ringbuf_t {
-	rc_ts_dbl_t* d;		///< pointer to dynamically allocated data
+	double* d;		///< pointer to dynamically allocated data
+	int64_t* t;		///< point to timestamp data
 	int size;			///< number of elements the buffer can hold
 	int64_t forward_limit; ///< max nanoseconds into the future to predict, default 2e8 (0.2s)
 	int index;			///< index of the most recently added value
@@ -34,6 +30,7 @@ typedef struct rc_timed_ringbuf_t {
  */
 #define RC_TIMED_RINGBUF_INITIALIZER {\
 	.d = NULL,\
+	.t = 0,\
 	.size = 0,\
 	.forward_limit = 200000000,\
 	.index = 0,\
@@ -116,16 +113,16 @@ int rc_timed_ringbuf_get_pos_b4_ts(rc_timed_ringbuf_t* buf, int64_t ts_ns);
  *
  * @param      buf       The buffer
  * @param[in]  position  The position
- * @param      result    The result
+ * @param      ts        The result
  *
  * @return     0 on success, -1 on generic error, -2 if the buffer does not
  *             contain enough data yet
  */
-int rc_timed_ringbuf_get_entry_at_pos(rc_timed_ringbuf_t* buf, int position, rc_ts_dbl_t* result);
+int rc_timed_ringbuf_get_ts_at_pos(rc_timed_ringbuf_t* buf, int position, int64_t* ts);
 
 /**
- * @brief      fetch the value which is 'position' steps behind
- *             the last value added to the buffer.
+ * @brief      fetch the value which is 'position' steps behind the last value
+ *             added to the buffer.
  *
  *             If 'position' is given as 0 then the most recent entry is
  *             returned. The position obviously can't be larger than size-1.
@@ -135,11 +132,12 @@ int rc_timed_ringbuf_get_entry_at_pos(rc_timed_ringbuf_t* buf, int position, rc_
  * @param      buf       The buffer
  * @param[in]  position  The position
  * @param      result    The result
+ * @param      val   The result
  *
  * @return     0 on success, -1 on generic error, -2 if the buffer does not
  *             contain enough data yet
  */
-int rc_timed_ringbuf_get_val_at_pos(rc_timed_ringbuf_t* buf, int position, double* result);
+int rc_timed_ringbuf_get_val_at_pos(rc_timed_ringbuf_t* buf, int position, double* val);
 
 
 /**
@@ -178,7 +176,7 @@ int rc_timed_ringbuf_get_val_at_time(rc_timed_ringbuf_t* buf, int64_t ts_ns, dou
  *
  * @return     0 on success, -1 on general error, -2 if sample at t1 was not found, -3 if sample at t2 was not found
  */
-int rc_timed_ringbuf_integrate_over_time(rc_timed_ringbuf_t* buf, int64_t t1, int64_t t2, double* integral);
+int rc_timed_ringbuf_integrate_over_time(rc_timed_ringbuf_t* buf, int64_t t_start, int64_t t_end, double* integral);
 
 #ifdef __cplusplus
 }
