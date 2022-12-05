@@ -21,7 +21,7 @@ typedef struct rc_timed_ringbuf_t {
 	int index;			///< index of the most recently added value
 	int items_in_buf;	///< number of items in the buffer, between 0 and size
 	int initialized;	///< flag indicating if memory has been allocated for the buffer
-	pthread_mutex_t mutex;
+	pthread_mutex_t mutex; ///< this gets locked and unlocked by almost every function here
 } rc_timed_ringbuf_t;
 
 
@@ -177,6 +177,28 @@ int rc_timed_ringbuf_get_val_at_time(rc_timed_ringbuf_t* buf, int64_t ts_ns, dou
  * @return     0 on success, -1 on general error, -2 if sample at t1 was not found, -3 if sample at t2 was not found
  */
 int rc_timed_ringbuf_integrate_over_time(rc_timed_ringbuf_t* buf, int64_t t_start, int64_t t_end, double* integral);
+
+
+/**
+ * @brief      copy out the n most recent samples into contiguous memory.
+ *
+ *             Make sure you've allocated enough space in the output buffer.
+ *             Data is copied out in the same order it is stored in the buffer
+ *             which is oldest at the start (left), newest at the end (right).
+ *
+ *             This is useful, for example, if you want to run an FFT on a
+ *             subset of a larger buffer of data.
+ *
+ * @param      buf   The buffer
+ * @param[in]  n     number of entries to copy out, must be between 1 and the
+ *                   buffer size inclusive.
+ * @param      out   The out
+ *
+ * @return     0 on success, -1 on failure
+ */
+int rc_timed_ringbuf_copy_out_n_newest(rc_timed_ringbuf_t* buf, int n, double* out);
+
+
 
 #ifdef __cplusplus
 }
