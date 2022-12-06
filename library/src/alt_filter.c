@@ -203,18 +203,18 @@ int rc_alt_filter_add_flow(rc_alt_filter_t* f, double scale, int64_t ts_ns)
 	}
 
 	if(f->en_debug_prints){
-		printf("scl:%5.2f", scale);
-		printf(" fb/pt: %d%d", should_run_feedback, should_run_passthrough);
-		printf(" v:%5.2f", baro_v_at_ts);
-		printf("  h_eq:%5.2f", h_eq);
+		fprintf(stderr, "scl:%5.2f", scale);
+		fprintf(stderr, " fb/pt: %d%d", should_run_feedback, should_run_passthrough);
+		fprintf(stderr, " v:%5.2f", baro_v_at_ts);
+		fprintf(stderr, "  h_eq:%5.2f", h_eq);
 		//printf(" h_err: %5.2f", h_error);
-		printf("  fb:%5.2f", feedback);
-		printf("  hcam:%5.1f", cam_hgt);
-		printf("  clpf:%5.1f", f->lpf.newest_output);
-		printf("  hbar:%5.1f", baro_at_ts);
-		printf("  bhpf:%5.1f", f->hpf.newest_output);
-		printf("  out:%5.1f", f->last_output);
-		//printf("\n");
+		fprintf(stderr, "  fb:%5.2f", feedback);
+		fprintf(stderr, "  hcam:%5.1f", cam_hgt);
+		fprintf(stderr, "  clpf:%5.1f", f->lpf.newest_output);
+		fprintf(stderr, "  hbar:%5.1f", baro_at_ts);
+		fprintf(stderr, "  bhpf:%5.1f", f->hpf.newest_output);
+		fprintf(stderr, "  out:%5.1f", f->last_output);
+		fprintf(stderr, "\n");
 	}
 
 
