@@ -235,6 +235,31 @@ int rc_timed_ringbuf_integrate_over_time(rc_timed_ringbuf_t* buf, \
 int rc_timed_ringbuf_copy_out_n_newest(rc_timed_ringbuf_t* buf, int n, double* out);
 
 
+/**
+ * @brief      calculate the mean of the last n samples
+ *
+ *
+ * @param[in]  buf   The buffer
+ * @param[in]  n     number of samples to use for the calculation
+ * @param[out] out   pointer to write the answer out to
+ *
+ * @return     0 on success, -1 on failure
+ */
+int rc_timed_ringbuf_mean(rc_timed_ringbuf_t* buf, int n, double* out);
+
+
+/**
+ * @brief      calculate the standard deviation of the last n samples
+ *
+ *
+ * @param[in]  buf   The buffer
+ * @param[in]  n     number of samples to use for the calculation
+ * @param[out] out   pointer to write the answer out to
+ *
+ * @return     0 on success, -1 on failure
+ */
+int rc_timed_ringbuf_std_dev(rc_timed_ringbuf_t* buf, int n, double* out);
+
 
 #ifdef __cplusplus
 }

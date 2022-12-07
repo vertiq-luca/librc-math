@@ -9,18 +9,19 @@
 #include <stdlib.h>
 #include <string.h>
 #include <math.h> // for sqrt
-#include <rc_math/timed_ringbuf.h>
+#include <rc_math/timed3_ringbuf.h>
+#include <rc_math/quaternion.h>
 #include "algebra_common.h"
 
 
-rc_timed_ringbuf_t rc_timed_ringbuf_empty(void)
+rc_timed3_ringbuf_t rc_timed3_ringbuf_empty(void)
 {
-	rc_timed_ringbuf_t new = RC_TIMED_RINGBUF_INITIALIZER;
+	rc_timed3_ringbuf_t new = RC_TIMED3_RINGBUF_INITIALIZER;
 	return new;
 }
 
 
-int rc_timed_ringbuf_alloc(rc_timed_ringbuf_t* buf, int size)
+int rc_timed3_ringbuf_alloc(rc_timed3_ringbuf_t* buf, int size)
 {
 	// sanity checks
 	if(unlikely(buf==NULL)){
@@ -42,7 +43,7 @@ int rc_timed_ringbuf_alloc(rc_timed_ringbuf_t* buf, int size)
 	buf->items_in_buf = 0;
 	buf->initialized = 0;
 	// allocate mem for array
-	buf->d = (double*)calloc(size,sizeof(double));
+	buf->d = (double*)calloc(size,3*sizeof(double));
 	buf->t = (int64_t*)calloc(size,sizeof(int64_t));
 	if(buf->d==NULL || buf->t==NULL){
 		fprintf(stderr,"ERROR in %s, failed to allocate memory\n", __FUNCTION__);
@@ -55,9 +56,9 @@ int rc_timed_ringbuf_alloc(rc_timed_ringbuf_t* buf, int size)
 }
 
 
-int rc_timed_ringbuf_free(rc_timed_ringbuf_t* buf)
+int rc_timed3_ringbuf_free(rc_timed3_ringbuf_t* buf)
 {
-	rc_timed_ringbuf_t new = RC_TIMED_RINGBUF_INITIALIZER;
+	rc_timed3_ringbuf_t new = RC_TIMED3_RINGBUF_INITIALIZER;
 	if(unlikely(buf==NULL)){
 		fprintf(stderr, "ERROR in %s, received NULL pointer\n", __FUNCTION__);
 		return -1;
@@ -72,12 +73,12 @@ int rc_timed_ringbuf_free(rc_timed_ringbuf_t* buf)
 }
 
 
-int rc_timed_ringbuf_insert(rc_timed_ringbuf_t* buf, int64_t ts_ns, double val)
+int rc_timed3_ringbuf_insert(rc_timed3_ringbuf_t* buf, int64_t ts_ns, double* val)
 {
 	int new_index;
 
 	// sanity checks
-	if(unlikely(buf==NULL)){
+	if(unlikely(buf==NULL || val==NULL)){
 		fprintf(stderr,"ERROR in %s, received NULL pointer\n", __FUNCTION__);
 		return -1;
 	}
@@ -105,7 +106,7 @@ int rc_timed_ringbuf_insert(rc_timed_ringbuf_t* buf, int64_t ts_ns, double val)
 
 	// write out new value
 	buf->t[new_index] = ts_ns;
-	buf->d[new_index] = val;
+	memcpy(&buf->d[3*new_index], val, 3*sizeof(double));
 	// bump index
 	buf->index=new_index;
 	// increment number of items if necessary
@@ -117,7 +118,7 @@ int rc_timed_ringbuf_insert(rc_timed_ringbuf_t* buf, int64_t ts_ns, double val)
 }
 
 
-static int _get_ts_at_pos_nolock(rc_timed_ringbuf_t* buf, int position, int64_t* ts)
+static int _get_ts_at_pos_nolock(rc_timed3_ringbuf_t* buf, int position, int64_t* ts)
 {
 	// check for looparound
 	int return_index = buf->index-position;
@@ -129,7 +130,7 @@ static int _get_ts_at_pos_nolock(rc_timed_ringbuf_t* buf, int position, int64_t*
 }
 
 
-int rc_timed_ringbuf_get_ts_at_pos(rc_timed_ringbuf_t* buf, int position, int64_t* ts)
+int rc_timed3_ringbuf_get_ts_at_pos(rc_timed3_ringbuf_t* buf, int position, int64_t* ts)
 {
 	// sanity checks
 	if(unlikely(buf==NULL || ts==NULL)){
@@ -159,19 +160,19 @@ int rc_timed_ringbuf_get_ts_at_pos(rc_timed_ringbuf_t* buf, int position, int64_
 	return 0;
 }
 
-static int _get_val_at_pos_nolock(rc_timed_ringbuf_t* buf, int position, double* val)
+static int _get_val_at_pos_nolock(rc_timed3_ringbuf_t* buf, int position, double* val)
 {
 	// convert position to index, check for looparound
 	int return_index = buf->index - position;
 	if(return_index<0) return_index += buf->size;
 
-	*val = buf->d[return_index];
+	memcpy(val, &buf->d[3*return_index], 3*sizeof(double));
 
 	return 0;
 }
 
 
-int rc_timed_ringbuf_get_val_at_pos(rc_timed_ringbuf_t* buf, int position, double* val)
+int rc_timed3_ringbuf_get_val_at_pos(rc_timed3_ringbuf_t* buf, int position, double* val)
 {
 	// sanity checks
 	if(unlikely(buf==NULL || val==NULL)){
@@ -199,7 +200,7 @@ int rc_timed_ringbuf_get_val_at_pos(rc_timed_ringbuf_t* buf, int position, doubl
 }
 
 
-static int _get_pos_b4_ts_nolock(rc_timed_ringbuf_t* buf, int64_t ts)
+static int _get_pos_b4_ts_nolock(rc_timed3_ringbuf_t* buf, int64_t ts)
 {
 	int64_t tmp;
 
@@ -218,7 +219,7 @@ static int _get_pos_b4_ts_nolock(rc_timed_ringbuf_t* buf, int64_t ts)
 }
 
 
-int rc_timed_ringbuf_get_pos_b4_ts(rc_timed_ringbuf_t* buf, int64_t ts)
+int rc_timed3_ringbuf_get_pos_b4_ts(rc_timed3_ringbuf_t* buf, int64_t ts)
 {
 	// sanity checks
 	if(unlikely(buf==NULL)){
@@ -238,12 +239,12 @@ int rc_timed_ringbuf_get_pos_b4_ts(rc_timed_ringbuf_t* buf, int64_t ts)
 }
 
 
-int rc_timed_ringbuf_get_val_at_time(rc_timed_ringbuf_t* buf, int64_t ts_ns, double* val)
+int rc_timed3_ringbuf_get_val_at_time(rc_timed3_ringbuf_t* buf, int64_t ts_ns, double* val)
 {
 	int i;
 	int found = 0;
 	int64_t t1, t2 = 0;
-	double x1, x2;
+	double x1[3], x2[3];
 
 	// sanity checks
 	if(unlikely(buf==NULL)){
@@ -289,7 +290,7 @@ int rc_timed_ringbuf_get_val_at_time(rc_timed_ringbuf_t* buf, int64_t ts_ns, dou
 	// the two most recent records
 	if(ts_ns > latest_ts){
 
-		if(unlikely(_get_val_at_pos_nolock(buf, 1, &x1))){
+		if(unlikely(_get_val_at_pos_nolock(buf, 1, x1))){
 			fprintf(stderr,"ERROR in %s, failed to fetch entry before ts\n", __FUNCTION__);
 			pthread_mutex_unlock(&buf->mutex);
 			return -1;
@@ -299,7 +300,7 @@ int rc_timed_ringbuf_get_val_at_time(rc_timed_ringbuf_t* buf, int64_t ts_ns, dou
 			pthread_mutex_unlock(&buf->mutex);
 			return -1;
 		}
-		if(unlikely(_get_val_at_pos_nolock(buf, 0, &x2))){
+		if(unlikely(_get_val_at_pos_nolock(buf, 0, x2))){
 			fprintf(stderr,"ERROR in %s, failed to fetch entry after ts\n", __FUNCTION__);
 			pthread_mutex_unlock(&buf->mutex);
 			return -1;
@@ -362,8 +363,8 @@ int rc_timed_ringbuf_get_val_at_time(rc_timed_ringbuf_t* buf, int64_t ts_ns, dou
 
 				// these fetches shouldn't fail since we already got the timestamp
 				// at this position.
-				_get_val_at_pos_nolock(buf, i,   &x1);
-				_get_val_at_pos_nolock(buf, i-1, &x2);
+				_get_val_at_pos_nolock(buf, i,   x1);
+				_get_val_at_pos_nolock(buf, i-1, x2);
 				_get_ts_at_pos_nolock(buf,  i-1, &t2);
 				// break and start interpolation
 				found = 1;
@@ -380,14 +381,16 @@ int rc_timed_ringbuf_get_val_at_time(rc_timed_ringbuf_t* buf, int64_t ts_ns, dou
 	// calculate interpolation constant t which is between 0 and 1.
 	// 0 would be right at tf_before, 1 would be right at tf_after.
 	double t = (double)(ts_ns-t1) / (double)(t2-t1);
-	*val = x1 + (t*(x2-x1));
+	val[0] = x1[0] + (t*(x2[0]-x1[0]));
+	val[1] = x1[1] + (t*(x2[1]-x1[1]));
+	val[2] = x1[2] + (t*(x2[2]-x1[2]));
 
 	return 0;
 }
 
 
 // TODO optimize this, just got it working for now
-int rc_timed_ringbuf_integrate_over_time(rc_timed_ringbuf_t* buf, int64_t t_start, int64_t t_end, double* integral)
+int rc_timed3_ringbuf_integrate_over_time(rc_timed3_ringbuf_t* buf, int64_t t_start, int64_t t_end, double* integral)
 {
 	// sanity checks
 	if(unlikely(buf==NULL)){
@@ -403,26 +406,27 @@ int rc_timed_ringbuf_integrate_over_time(rc_timed_ringbuf_t* buf, int64_t t_star
 		return -1;
 	}
 
-	int pos_start = rc_timed_ringbuf_get_pos_b4_ts(buf, t_start);
+	int pos_start = rc_timed3_ringbuf_get_pos_b4_ts(buf, t_start);
 	if(pos_start<0) return -2;
-	int pos_end = rc_timed_ringbuf_get_pos_b4_ts(buf, t_end);
+	int pos_end = rc_timed3_ringbuf_get_pos_b4_ts(buf, t_end);
 	if(pos_end<0) return -3;
 
 
 	pthread_mutex_lock(&buf->mutex);
 
-	double accumulator = 0;
-	*integral = accumulator;
+	double accumulator[3];
+	memset(accumulator, 0, 3*sizeof(double));
+	memset(integral, 0, 3*sizeof(double));
 
 	int64_t t1, t2;
-	double x1, x2;
+	double x1[3], x2[3];
 
 	if(_get_ts_at_pos_nolock(buf, pos_start, &t1)){
 		fprintf(stderr,"ERROR in %s\n", __FUNCTION__);
 		pthread_mutex_unlock(&buf->mutex);
 		return -1;
 	}
-	if(_get_val_at_pos_nolock(buf, pos_start, &x1)){
+	if(_get_val_at_pos_nolock(buf, pos_start, x1)){
 		fprintf(stderr,"ERROR in %s\n", __FUNCTION__);
 		pthread_mutex_unlock(&buf->mutex);
 		return -1;
@@ -436,74 +440,34 @@ int rc_timed_ringbuf_integrate_over_time(rc_timed_ringbuf_t* buf, int64_t t_star
 			pthread_mutex_unlock(&buf->mutex);
 			return -1;
 		}
-		if(_get_val_at_pos_nolock(buf, i, &x2)){
+		if(_get_val_at_pos_nolock(buf, i, x2)){
 			fprintf(stderr,"ERROR in %s\n", __FUNCTION__);
 			pthread_mutex_unlock(&buf->mutex);
 			return -1;
 		}
 
 		double dt_s = (double)(t2 - t1)/1000000000.0;
-		accumulator += dt_s * (x1 + x2)/2.0;
-		x1 = x2;
+		accumulator[0] += dt_s * (x1[0] + x2[0])/2.0;
+		accumulator[1] += dt_s * (x1[1] + x2[1])/2.0;
+		accumulator[2] += dt_s * (x1[2] + x2[2])/2.0;
+
+		memcpy(x1,x2,3*sizeof(double));
 		t1 = t2;
 
 	}
 
-	*integral = accumulator;
+	memcpy(integral, accumulator, 3*sizeof(double));
 	pthread_mutex_unlock(&buf->mutex);
 
 	return 0;
 }
 
 
-int rc_timed_ringbuf_copy_out_n_newest(rc_timed_ringbuf_t* buf, int n, double* out)
+
+
+static int _mean_nolock(rc_timed3_ringbuf_t* buf, int n, double* out)
 {
-	// sanity checks
-	if(unlikely(buf==NULL)){
-		fprintf(stderr,"ERROR in %s, received NULL pointer\n", __FUNCTION__);
-		return -1;
-	}
-	if(unlikely(!buf->initialized)){
-		fprintf(stderr,"ERROR in %s, ringbuf uninitialized\n", __FUNCTION__);
-		return -1;
-	}
-	if(unlikely(n<1 || n>buf->size)){
-		fprintf(stderr,"ERROR in %s, requested too many or too few\n", __FUNCTION__);
-		return -1;
-	}
-	if(unlikely(n>buf->items_in_buf)){
-		fprintf(stderr,"ERROR in %s, requested %d items but buffer has only been populated with %d items\n",\
-							__FUNCTION__, n, buf->items_in_buf);
-		return -1;
-	}
-
-
-	pthread_mutex_lock(&buf->mutex);
-
-	// find where to start copying from
-	int start = buf->index - n + 1;
-	if(start<0) start += buf->size;
-
-	// copy the first chunk from oldest data
-	int n_first_copy = buf->size-start;
-	if(n_first_copy>n) n_first_copy = n;
-	memcpy(out, &buf->d[start], n_first_copy*sizeof(double));
-
-	// see if a second copy is needed due to wrap
-	if(n_first_copy < n){
-		int n_second_copy = n-n_first_copy;
-		memcpy(&out[n_first_copy], buf->d, n_second_copy*sizeof(double));
-	}
-
-	pthread_mutex_unlock(&buf->mutex);
-
-	return 0;
-}
-
-
-static int _mean_nolock(rc_timed_ringbuf_t* buf, int n, double* out)
-{
-	double sum = 0;
+	double sum[3] = {0,0,0};
 	int i;
 
 	// find where to start the first pass
@@ -515,21 +479,31 @@ static int _mean_nolock(rc_timed_ringbuf_t* buf, int n, double* out)
 	if(n_first_pass>n) n_first_pass = n;
 
 	// sum the first chunk up to the end of the buffer
-	for(i=start; i<(start+n_first_pass); i++) sum += buf->d[i];
+	for(i=start; i<(start+n_first_pass); i++){
+		sum[0] += buf->d[(i*3)+0];
+		sum[1] += buf->d[(i*3)+1];
+		sum[2] += buf->d[(i*3)+2];
+	}
 
 	// see if a second pass is needed due to wrap
 	if(n_first_pass < n){
 		int n_second_pass = n-n_first_pass;
-		for(i=0; i<n_second_pass; i++) sum += buf->d[i];
+		for(i=0; i<n_second_pass; i++){
+			sum[0] += buf->d[(i*3)+0];
+			sum[1] += buf->d[(i*3)+1];
+			sum[2] += buf->d[(i*3)+2];
+		}
 	}
 
 	// all done!
-	*out = sum/n;
+	out[0] = sum[0]/n;
+	out[1] = sum[1]/n;
+	out[2] = sum[2]/n;
 	return 0;
 }
 
 
-int rc_timed_ringbuf_mean(rc_timed_ringbuf_t* buf, int n, double* out)
+int rc_timed3_ringbuf_mean(rc_timed3_ringbuf_t* buf, int n, double* out)
 {
 	// sanity checks
 	if(unlikely(buf==NULL)){
@@ -558,7 +532,7 @@ int rc_timed_ringbuf_mean(rc_timed_ringbuf_t* buf, int n, double* out)
 }
 
 
-int rc_timed_ringbuf_std_dev(rc_timed_ringbuf_t* buf, int n, double* out)
+int rc_timed3_ringbuf_std_dev(rc_timed3_ringbuf_t* buf, int n, double* out)
 {
 	// sanity checks
 	if(unlikely(buf==NULL)){
@@ -581,17 +555,17 @@ int rc_timed_ringbuf_std_dev(rc_timed_ringbuf_t* buf, int n, double* out)
 
 	// shortcut for length 1
 	if(n==1){
-		*out = 0.0;
+		memset(out, 0, 3*sizeof(double));
 		return 0;
 	}
 
 	pthread_mutex_lock(&buf->mutex);
 
-	double mean, diff;
+	double mean[3], diff;
 	int i;
 
 	// find mean
-	_mean_nolock(buf, n, &mean);
+	_mean_nolock(buf, n, mean);
 
 	// find where to start the first pass
 	int start = buf->index - n + 1;
@@ -602,24 +576,113 @@ int rc_timed_ringbuf_std_dev(rc_timed_ringbuf_t* buf, int n, double* out)
 	if(n_first_pass>n) n_first_pass = n;
 
 	// sum the first chunk up to the end of the buffer
-	double mean_sqr = 0.0;
+	double mean_sqr[3] = {0, 0, 0};
 	for(i=start; i<(start+n_first_pass); i++){
-		diff = buf->d[i]-mean;
-		mean_sqr += diff*diff;
+		diff = buf->d[(i*3)+0]-mean[0];
+		mean_sqr[0] += diff*diff;
+		diff = buf->d[(i*3)+1]-mean[1];
+		mean_sqr[1] += diff*diff;
+		diff = buf->d[(i*3)+2]-mean[2];
+		mean_sqr[2] += diff*diff;
 	}
 
 	// see if a second pass is needed due to wrap
 	if(n_first_pass < n){
 		int n_second_pass = n-n_first_pass;
 		for(i=0; i<n_second_pass; i++){
-			diff = buf->d[i]-mean;
-			mean_sqr += diff*diff;
+			diff = buf->d[(i*3)+0]-mean[0];
+			mean_sqr[0] += diff*diff;
+			diff = buf->d[(i*3)+1]-mean[1];
+			mean_sqr[1] += diff*diff;
+			diff = buf->d[(i*3)+2]-mean[2];
+			mean_sqr[2] += diff*diff;
 		}
 	}
 
 	// all done!
-	*out = sqrt(mean_sqr/(double)(n-1));
+	out[0] = sqrt(mean_sqr[0]/(double)(n-1));
+	out[1] = sqrt(mean_sqr[1]/(double)(n-1));
+	out[2] = sqrt(mean_sqr[2]/(double)(n-1));
 	pthread_mutex_unlock(&buf->mutex);
 
+	return 0;
+}
+
+int rc_timed3_ringbuf_integrate_gyro_3d(rc_timed3_ringbuf_t* buf, \
+							int64_t t_start, int64_t t_end, rc_matrix_t* out)
+{
+
+	// sanity checks
+	if(unlikely(buf==NULL)){
+		fprintf(stderr,"ERROR in %s, received NULL pointer\n", __FUNCTION__);
+		return -1;
+	}
+	if(unlikely(!buf->initialized)){
+		fprintf(stderr,"ERROR in %s, ringbuf uninitialized\n", __FUNCTION__);
+		return -1;
+	}
+	if(t_start>=t_end){
+		fprintf(stderr,"ERROR in %s, t_start must be older than t_end\n", __FUNCTION__);
+		return -1;
+	}
+	if(rc_matrix_identity(out, 3)){
+		fprintf(stderr,"ERROR in %s, failed to allocate output matrix\n", __FUNCTION__);
+		return -1;
+	}
+
+	pthread_mutex_lock(&buf->mutex);
+
+	int pos_start = rc_timed3_ringbuf_get_pos_b4_ts(buf, t_start);
+	if(pos_start<0) return -2;
+	int pos_end = rc_timed3_ringbuf_get_pos_b4_ts(buf, t_end);
+	if(pos_end<0) return -3;
+
+	rc_matrix_t tmp = RC_MATRIX_INITIALIZER;
+	rc_matrix_alloc(&tmp, 3, 3);
+	int64_t t1, t2;
+	double x1[3], x2[3];
+
+	if(_get_ts_at_pos_nolock(buf, pos_start, &t1)){
+		fprintf(stderr,"ERROR in %s\n", __FUNCTION__);
+		pthread_mutex_unlock(&buf->mutex);
+		return -1;
+	}
+	if(_get_val_at_pos_nolock(buf, pos_start, x1)){
+		fprintf(stderr,"ERROR in %s\n", __FUNCTION__);
+		pthread_mutex_unlock(&buf->mutex);
+		return -1;
+	}
+
+	// loop through
+	for(int i=(pos_start-1); i>=pos_end; i--){
+
+		if(_get_ts_at_pos_nolock(buf, i, &t2)){
+			fprintf(stderr,"ERROR in %s\n", __FUNCTION__);
+			pthread_mutex_unlock(&buf->mutex);
+			return -1;
+		}
+		if(_get_val_at_pos_nolock(buf, i, x2)){
+			fprintf(stderr,"ERROR in %s\n", __FUNCTION__);
+			pthread_mutex_unlock(&buf->mutex);
+			return -1;
+		}
+
+		// trapezoidal integration
+		double dt_s_over_two = ((double)(t2-t1))/500000000.0;
+		double dx = (x1[0]+x2[0]) * dt_s_over_two;
+		double dy = (x1[1]+x2[1]) * dt_s_over_two;
+		double dz = (x1[2]+x2[2]) * dt_s_over_two;
+
+		// move final rotation
+		rc_rotation_matrix_from_tait_bryan(dx, dy, dz, &tmp);
+		rc_matrix_right_multiply_inplace(out, tmp);
+
+		// save x2/t2 for next step
+		t1 = t2;
+		memcpy(x1,x2,3*sizeof(double));
+	}
+
+	pthread_mutex_unlock(&buf->mutex);
+	rc_matrix_free(&tmp);
 	return 0;
 }

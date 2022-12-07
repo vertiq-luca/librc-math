@@ -5,8 +5,8 @@
  *             Good for sensor data, particularly gyro or accelerometer.
  *
  *             See timed_ringbuf.h for a general description. This is mostly the
- *             same but operates on triplets. Data is stores in the buffer as
- *             xyzxyzxyz etc
+ *             same but operates on triplets. Data is stored in the buffer as
+ *             xyzxyzxyz...
  *
  * @author     James Strawson
  * @date       2022
@@ -25,7 +25,7 @@ extern "C" {
 
 #include <stdint.h>
 #include <pthread.h>
-
+#include <rc_math/matrix.h>
 
 
 typedef struct rc_timed3_ringbuf_t {
@@ -207,7 +207,50 @@ int rc_timed3_ringbuf_integrate_over_time(rc_timed3_ringbuf_t* buf, \
 							int64_t t_start, int64_t t_end, double* integral);
 
 
+/**
+ * @brief      calculate the mean of the last n samples
+ *
+ *
+ * @param[in]  buf   The buffer
+ * @param[in]  n     number of samples to use for the calculation
+ * @param[out] out   pointer to write the answer out to
+ *
+ * @return     0 on success, -1 on failure
+ */
+int rc_timed3_ringbuf_mean(rc_timed3_ringbuf_t* buf, int n, double* out);
 
+
+/**
+ * @brief      calculate the standard deviation of the last n samples
+ *
+ *
+ * @param[in]  buf   The buffer
+ * @param[in]  n     number of samples to use for the calculation
+ * @param[out] out   pointer to write the answer out to
+ *
+ * @return     0 on success, -1 on failure
+ */
+int rc_timed3_ringbuf_std_dev(rc_timed3_ringbuf_t* buf, int n, double* out);
+
+
+/**
+ * @brief      assuming the triplet ringbuf contains XYZ gyroscope data in rad/s
+ *             this function calculates the rotation of the body in 3d between
+ *             two points in time. This is intended for things like EIS and
+ *             gyro-assisted feature tracking.
+ *
+ *             the output matrix will be allocated or reallocated as necessary
+ *             to hold the resulting 3x3 rotation matrix.
+ *
+ * @param[in]  buf      The buffer
+ * @param[in]  t_start  start time nanoseconds
+ * @param[in]  t_end    end time nanoseconds
+ * @param[out] out      pointer to a matrix to write the answer out to
+ *
+ * @return     0 on success, -1 on failure
+ */
+int rc_timed3_ringbuf_integrate_gyro_3d(rc_timed3_ringbuf_t* buf, \
+							int64_t t_start, int64_t t_end, rc_matrix_t* out);
 
 
 #ifdef __cplusplus

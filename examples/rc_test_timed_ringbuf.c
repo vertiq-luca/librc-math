@@ -42,6 +42,13 @@ int main()
 		printf("ret: %3d pos: %2d, val: %4.1f\n", ret, i, outval);
 	}
 
+	printf("test mean\n");
+	for(i=0;i<4;i++){
+		ret = rc_timed_ringbuf_mean(&b, i, &outval);
+		printf("ret: %3d n: %2d, val: %4.1f\n", ret, i, outval);
+	}
+
+
 	// fill the rest and test the looparound
 	for(i=0;i<SIZE;i++){
 		inval += 1.0;
@@ -75,6 +82,18 @@ int main()
 	_print_array(SIZE-1, all);
 	rc_timed_ringbuf_copy_out_n_newest(&b, SIZE, all);
 	_print_array(SIZE, all);
+
+	printf("test mean\n");
+	for(i=1;i<=SIZE;i++){
+		ret = rc_timed_ringbuf_mean(&b, i, &outval);
+		printf("ret: %3d n: %2d, val: %4.1f\n", ret, i, outval);
+	}
+
+	printf("test std dev\n");
+	for(i=1;i<=SIZE;i++){
+		ret = rc_timed_ringbuf_std_dev(&b, i, &outval);
+		printf("ret: %3d n: %2d, val: %4.1f\n", ret, i, outval);
+	}
 
 
 	return 0;

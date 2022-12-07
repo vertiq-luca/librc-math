@@ -1,5 +1,5 @@
 1.4.0
-    * timed ringbuf module
+    * timed_ringbuf and timed3_ringbuf modules
     * altitude filter module for optic flow
 1.3.0
     * new timestamp filter module for camera and IMU data
