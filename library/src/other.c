@@ -15,9 +15,8 @@
 #include <time.h>
 #include <errno.h>
 #include <rc_math/other.h>
+#include "algebra_common.h"
 
-// preposessor macros
-#define unlikely(x) __builtin_expect (!!(x), 0)
 
 typedef union {
     uint32_t i;

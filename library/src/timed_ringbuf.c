@@ -5,18 +5,11 @@
  */
 
 
-#ifndef unlikely
-#define unlikely(x)	__builtin_expect (!!(x), 0)
-#endif
-
-#ifndef likely
-#define likely(x)	__builtin_expect (!!(x), 1)
-#endif
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <rc_math/timed_ringbuf.h>
+#include "algebra_common.h"
 
 
 rc_timed_ringbuf_t rc_timed_ringbuf_empty(void)
@@ -37,8 +30,11 @@ int rc_timed_ringbuf_alloc(rc_timed_ringbuf_t* buf, int size)
 		fprintf(stderr,"ERROR in %s, size must be >=2\n", __FUNCTION__);
 		return -1;
 	}
-	// if it's already allocated, nothing to do
-	if(buf->initialized && buf->size==size && buf->d!=NULL) return 0;
+	// Don't allocate twice, throw an error if it's not starting clean
+	if(buf->initialized || buf->size==size || buf->d!=NULL){
+		fprintf(stderr,"ERROR in %s, buf already initialized or not in a clean state\n", __FUNCTION__);
+		return -1;
+	}
 	// make sure it's zero'd out
 	buf->size = 0;
 	buf->index = 0;
@@ -73,7 +69,6 @@ int rc_timed_ringbuf_free(rc_timed_ringbuf_t* buf)
 	}
 	return 0;
 }
-
 
 
 int rc_timed_ringbuf_insert(rc_timed_ringbuf_t* buf, int64_t ts_ns, double val)
@@ -121,145 +116,8 @@ int rc_timed_ringbuf_insert(rc_timed_ringbuf_t* buf, int64_t ts_ns, double val)
 }
 
 
-int rc_timed_ringbuf_get_ts_at_pos(rc_timed_ringbuf_t* buf, int position, int64_t* ts)
-{
-	int return_index;
-	// sanity checks
-	if(unlikely(buf==NULL || ts==NULL)){
-		fprintf(stderr,"ERROR in %s, received NULL pointer\n", __FUNCTION__);
-		return -1;
-	}
-	if(unlikely(position<0 || (position>buf->size-1))){
-		fprintf(stderr,"ERROR in %s, position out of bounds\n", __FUNCTION__);
-		return -1;
-	}
-	if(unlikely(!buf->initialized)){
-		fprintf(stderr,"ERROR in %s, ringbuf uninitialized\n", __FUNCTION__);
-		return -1;
-	}
-	// silently return if user requested an item that hasn't been added yet
-	if(position>=buf->items_in_buf){
-		return -2;
-	}
-
-	pthread_mutex_lock(&buf->mutex);
-
-	// convert position to index, check for looparound
-	return_index=buf->index-position;
-	if(return_index<0) return_index+=buf->size;
-
-	*ts = buf->t[return_index];
-
-	pthread_mutex_unlock(&buf->mutex);
-	return 0;
-}
-
-static int _get_val_at_pos_nolock(rc_timed_ringbuf_t* buf, int position, double* val)
-{
-	int return_index;
-	// sanity checks
-	if(unlikely(buf==NULL || val==NULL)){
-		fprintf(stderr,"ERROR in %s, received NULL pointer\n", __FUNCTION__);
-		return -1;
-	}
-	if(unlikely(position<0 || (position>buf->size-1))){
-		fprintf(stderr,"ERROR in %s, position out of bounds\n", __FUNCTION__);
-		return -1;
-	}
-	if(unlikely(!buf->initialized)){
-		fprintf(stderr,"ERROR in %s, ringbuf uninitialized\n", __FUNCTION__);
-		return -1;
-	}
-	// silently return if user requested an item that hasn't been added yet
-	if(position>=buf->items_in_buf){
-		return -2;
-	}
-
-	// convert position to index, check for looparound
-	return_index=buf->index-position;
-	if(return_index<0) return_index+=buf->size;
-
-	*val = buf->d[return_index];
-
-	return 0;
-}
-
-
-int rc_timed_ringbuf_get_val_at_pos(rc_timed_ringbuf_t* buf, int position, double* val)
-{
-	int return_index;
-	// sanity checks
-	if(unlikely(buf==NULL || val==NULL)){
-		fprintf(stderr,"ERROR in %s, received NULL pointer\n", __FUNCTION__);
-		return -1;
-	}
-	if(unlikely(position<0 || (position>buf->size-1))){
-		fprintf(stderr,"ERROR in %s, position out of bounds\n", __FUNCTION__);
-		return -1;
-	}
-	if(unlikely(!buf->initialized)){
-		fprintf(stderr,"ERROR in %s, ringbuf uninitialized\n", __FUNCTION__);
-		return -1;
-	}
-	// silently return if user requested an item that hasn't been added yet
-	if(position>=buf->items_in_buf){
-		return -2;
-	}
-
-	pthread_mutex_lock(&buf->mutex);
-
-	// convert position to index, check for looparound
-	return_index=buf->index-position;
-	if(return_index<0) return_index+=buf->size;
-
-	*val = buf->d[return_index];
-
-	pthread_mutex_unlock(&buf->mutex);
-	return 0;
-}
-
-
-/**
- * @brief      Fetches the timestamp which is 'position' steps behind the last
- *             value added to the buffer.
- *
- *             If 'position' is given as 0 then the most recent entry is
- *             returned. The position obviously can't be larger than size-1.
- *             This will also check and return -2 if the buffer hasn't been
- *             filled up enough to go back that far in time.
- *
- *             don't lock the mutex in here! this function is used locally by
- *             get_tf_at_time which calls this many times while the mutex is
- *             locked already
- *
- * @param[in]  buf       Pointer to user's buffer
- * @param[in]  position  steps back in the buffer to fetch the entry from
- *
- * @return     requested timestamp on success, -2 if buffer doesn't contain
- *             enough entries to go back to requested position, -1 on other
- *             error
- */
 static int _get_ts_at_pos_nolock(rc_timed_ringbuf_t* buf, int position, int64_t* ts)
 {
-	// sanity checks
-	if(unlikely(buf==NULL)){
-		fprintf(stderr,"ERROR in %s, received NULL pointer\n", __FUNCTION__);
-		return -1;
-	}
-	if(unlikely(position<0 || (position>buf->size-1))){
-		fprintf(stderr,"ERROR in %s, position out of bounds\n", __FUNCTION__);
-		return -1;
-	}
-	if(unlikely(!buf->initialized)){
-		fprintf(stderr,"ERROR in %s, ringbuf uninitialized\n", __FUNCTION__);
-		return -1;
-	}
-	// silently return if user requested an item that hasn't been added yet
-	if(position>=buf->items_in_buf){
-		return -2;
-	}
-
-
 	// check for looparound
 	int return_index = buf->index-position;
 	if(return_index<0) return_index+=buf->size;
@@ -269,6 +127,94 @@ static int _get_ts_at_pos_nolock(rc_timed_ringbuf_t* buf, int position, int64_t*
 	return 0;
 }
 
+
+int rc_timed_ringbuf_get_ts_at_pos(rc_timed_ringbuf_t* buf, int position, int64_t* ts)
+{
+	// sanity checks
+	if(unlikely(buf==NULL || ts==NULL)){
+		fprintf(stderr,"ERROR in %s, received NULL pointer\n", __FUNCTION__);
+		*ts = -1;
+		return -1;
+	}
+	if(unlikely(position<0 || (position>buf->size-1))){
+		fprintf(stderr,"ERROR in %s, position out of bounds\n", __FUNCTION__);
+		*ts = -1;
+		return -1;
+	}
+	if(unlikely(!buf->initialized)){
+		fprintf(stderr,"ERROR in %s, ringbuf uninitialized\n", __FUNCTION__);
+		*ts = -1;
+		return -1;
+	}
+	// silently return if user requested an item that hasn't been added yet
+	if(position>=buf->items_in_buf){
+		*ts = -1;
+		return -2;
+	}
+
+	pthread_mutex_lock(&buf->mutex);
+	_get_ts_at_pos_nolock(buf, position, ts);
+	pthread_mutex_unlock(&buf->mutex);
+	return 0;
+}
+
+static int _get_val_at_pos_nolock(rc_timed_ringbuf_t* buf, int position, double* val)
+{
+	// convert position to index, check for looparound
+	int return_index = buf->index - position;
+	if(return_index<0) return_index += buf->size;
+
+	*val = buf->d[return_index];
+
+	return 0;
+}
+
+
+int rc_timed_ringbuf_get_val_at_pos(rc_timed_ringbuf_t* buf, int position, double* val)
+{
+	// sanity checks
+	if(unlikely(buf==NULL || val==NULL)){
+		fprintf(stderr,"ERROR in %s, received NULL pointer\n", __FUNCTION__);
+		return -1;
+	}
+	if(unlikely(position<0 || (position>buf->size-1))){
+		fprintf(stderr,"ERROR in %s, position out of bounds\n", __FUNCTION__);
+		return -1;
+	}
+	if(unlikely(!buf->initialized)){
+		fprintf(stderr,"ERROR in %s, ringbuf uninitialized\n", __FUNCTION__);
+		return -1;
+	}
+	// silently return if user requested an item that hasn't been added yet
+	if(position>=buf->items_in_buf){
+		return -2;
+	}
+
+	pthread_mutex_lock(&buf->mutex);
+	_get_val_at_pos_nolock(buf, position, val);
+	pthread_mutex_unlock(&buf->mutex);
+
+	return 0;
+}
+
+
+static int _get_pos_b4_ts_nolock(rc_timed_ringbuf_t* buf, int64_t ts)
+{
+	int64_t tmp;
+
+	// make sure we actually have some data in the buffer
+	if(buf->items_in_buf<2) return -2;
+
+	// quick check that we have data old enough before searching through
+	_get_ts_at_pos_nolock(buf, buf->items_in_buf-1, &tmp);
+	if(tmp>ts) return -2;
+
+	for(int i=0; i<buf->items_in_buf; i++){
+		_get_ts_at_pos_nolock(buf, i, &tmp);
+		if(tmp<=ts) return i;
+	}
+	return -3;
+}
 
 
 int rc_timed_ringbuf_get_pos_b4_ts(rc_timed_ringbuf_t* buf, int64_t ts)
@@ -284,26 +230,11 @@ int rc_timed_ringbuf_get_pos_b4_ts(rc_timed_ringbuf_t* buf, int64_t ts)
 	}
 
 	pthread_mutex_lock(&buf->mutex);
-
-	int64_t tmp;
-	for(int i=0; i<buf->items_in_buf; i++){
-		if(_get_ts_at_pos_nolock(buf, i, &tmp)){
-			fprintf(stderr,"ERROR in %s, ringbuf uninitialized\n", __FUNCTION__);
-			pthread_mutex_unlock(&buf->mutex);
-			return -1;
-		}
-
-		if(tmp<=ts){
-			pthread_mutex_unlock(&buf->mutex);
-			return i;
-		}
-	}
-
+	int ret = _get_pos_b4_ts_nolock(buf, ts);
 	pthread_mutex_unlock(&buf->mutex);
-	return -2;
+
+	return ret;
 }
-
-
 
 
 int rc_timed_ringbuf_get_val_at_time(rc_timed_ringbuf_t* buf, int64_t ts_ns, double* val)
@@ -382,11 +313,8 @@ int rc_timed_ringbuf_get_val_at_time(rc_timed_ringbuf_t* buf, int64_t ts_ns, dou
 	else{
 		// now go searching through the buffer to find which two entries to interpolate between
 		for(i=0;i<buf->items_in_buf;i++){
-			if(unlikely(_get_ts_at_pos_nolock(buf,i, &t1))){
-				fprintf(stderr,"ERROR in %s, found unpopulated entry at position%d\n", __FUNCTION__, i);
-				pthread_mutex_unlock(&buf->mutex);
-				return -1;
-			}
+
+			_get_ts_at_pos_nolock(buf,i, &t1);
 
 			// check for error
 			if(t1<=0){
@@ -424,11 +352,7 @@ int rc_timed_ringbuf_get_val_at_time(rc_timed_ringbuf_t* buf, int64_t ts_ns, dou
 				// entry is actually newer, it should be if data went into the
 				// buffer monotonically
 				int64_t tmp;
-				if(unlikely(_get_ts_at_pos_nolock(buf,i-1,&tmp))){
-					fprintf(stderr,"ERROR in %s, unknown error\n", __FUNCTION__);
-					pthread_mutex_unlock(&buf->mutex);
-					return -1;
-				}
+				_get_ts_at_pos_nolock(buf,i-1,&tmp);
 				if(unlikely(tmp<ts_ns)){
 					fprintf(stderr,"ERROR in %s, bad timestamp found\n", __FUNCTION__);
 					pthread_mutex_unlock(&buf->mutex);
@@ -437,21 +361,9 @@ int rc_timed_ringbuf_get_val_at_time(rc_timed_ringbuf_t* buf, int64_t ts_ns, dou
 
 				// these fetches shouldn't fail since we already got the timestamp
 				// at this position.
-				if(unlikely(_get_val_at_pos_nolock(buf, i,   &x1))){
-					fprintf(stderr,"ERROR in %s, failed to fetch entry before ts\n", __FUNCTION__);
-					pthread_mutex_unlock(&buf->mutex);
-					return -1;
-				}
-				if(unlikely(_get_val_at_pos_nolock(buf, i-1, &x2))){
-					fprintf(stderr,"ERROR in %s, failed to fetch entry after ts\n", __FUNCTION__);
-					pthread_mutex_unlock(&buf->mutex);
-					return -1;
-				}
-				if(unlikely(_get_ts_at_pos_nolock(buf, i-1, &t2))){
-					fprintf(stderr,"ERROR in %s, failed to fetch entry after ts\n", __FUNCTION__);
-					pthread_mutex_unlock(&buf->mutex);
-					return -1;
-				}
+				_get_val_at_pos_nolock(buf, i,   &x1);
+				_get_val_at_pos_nolock(buf, i-1, &x2);
+				_get_ts_at_pos_nolock(buf,  i-1, &t2);
 				// break and start interpolation
 				found = 1;
 				break;
