@@ -406,13 +406,18 @@ int rc_timed3_ringbuf_integrate_over_time(rc_timed3_ringbuf_t* buf, int64_t t_st
 		return -1;
 	}
 
-	int pos_start = rc_timed3_ringbuf_get_pos_b4_ts(buf, t_start);
-	if(pos_start<0) return -2;
-	int pos_end = rc_timed3_ringbuf_get_pos_b4_ts(buf, t_end);
-	if(pos_end<0) return -3;
-
-
 	pthread_mutex_lock(&buf->mutex);
+
+	int pos_start = _get_pos_b4_ts_nolock(buf, t_start);
+	if(pos_start<0){
+		pthread_mutex_unlock(&buf->mutex);
+		return -2;
+	}
+	int pos_end = _get_pos_b4_ts_nolock(buf, t_end);
+	if(pos_end<0){
+		pthread_mutex_unlock(&buf->mutex);
+		return -3;
+	}
 
 	double accumulator[3];
 	memset(accumulator, 0, 3*sizeof(double));
@@ -632,10 +637,18 @@ int rc_timed3_ringbuf_integrate_gyro_3d(rc_timed3_ringbuf_t* buf, \
 
 	pthread_mutex_lock(&buf->mutex);
 
-	int pos_start = rc_timed3_ringbuf_get_pos_b4_ts(buf, t_start);
-	if(pos_start<0) return -2;
-	int pos_end = rc_timed3_ringbuf_get_pos_b4_ts(buf, t_end);
-	if(pos_end<0) return -3;
+	int pos_start = _get_pos_b4_ts_nolock(buf, t_start);
+	if(pos_start<0){
+		pthread_mutex_unlock(&buf->mutex);
+		return -2;
+	}
+	int pos_end = _get_pos_b4_ts_nolock(buf, t_end);
+	if(pos_end<0){
+		pthread_mutex_unlock(&buf->mutex);
+		return -3;
+	}
+
+	//printf("pos_start: %4d pos_end: %4d\n", pos_start, pos_end);
 
 	rc_matrix_t tmp = RC_MATRIX_INITIALIZER;
 	rc_matrix_alloc(&tmp, 3, 3);
@@ -668,7 +681,7 @@ int rc_timed3_ringbuf_integrate_gyro_3d(rc_timed3_ringbuf_t* buf, \
 		}
 
 		// trapezoidal integration
-		double dt_s_over_two = ((double)(t2-t1))/500000000.0;
+		double dt_s_over_two = ((double)(t2-t1))/2000000000.0;
 		double dx = (x1[0]+x2[0]) * dt_s_over_two;
 		double dy = (x1[1]+x2[1]) * dt_s_over_two;
 		double dz = (x1[2]+x2[2]) * dt_s_over_two;

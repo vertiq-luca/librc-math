@@ -208,8 +208,9 @@ int rc_timed_ringbuf_get_val_at_time(rc_timed_ringbuf_t* buf, int64_t ts_ns, dou
  * @param[in]  t_end     The t end
  * @param[out] integral  output integral
  *
- * @return     0 on success, -1 on general error, -2 if sample at t1 was not
- *             found, -3 if sample at t2 was not found
+ * @return     0 on success, -2 if the buffer does not contain data old enough,
+ *             -3 if the buffer does not contain data new enough. -1 on other
+ *             error.
  */
 int rc_timed_ringbuf_integrate_over_time(rc_timed_ringbuf_t* buf, \
 							int64_t t_start, int64_t t_end, double* integral);

@@ -403,13 +403,18 @@ int rc_timed_ringbuf_integrate_over_time(rc_timed_ringbuf_t* buf, int64_t t_star
 		return -1;
 	}
 
-	int pos_start = rc_timed_ringbuf_get_pos_b4_ts(buf, t_start);
-	if(pos_start<0) return -2;
-	int pos_end = rc_timed_ringbuf_get_pos_b4_ts(buf, t_end);
-	if(pos_end<0) return -3;
-
-
 	pthread_mutex_lock(&buf->mutex);
+
+	int pos_start = _get_pos_b4_ts_nolock(buf, t_start);
+	if(pos_start<0){
+		pthread_mutex_unlock(&buf->mutex);
+		return -2;
+	}
+	int pos_end = _get_pos_b4_ts_nolock(buf, t_end);
+	if(pos_end<0){
+		pthread_mutex_unlock(&buf->mutex);
+		return -3;
+	}
 
 	double accumulator = 0;
 	*integral = accumulator;
