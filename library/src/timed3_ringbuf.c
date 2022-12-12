@@ -613,29 +613,9 @@ int rc_timed3_ringbuf_std_dev(rc_timed3_ringbuf_t* buf, int n, double* out)
 	return 0;
 }
 
-
-static void _small_angle_q_from_gyro(double* xyz, double* q)
+// small angle approximation removes need for sin/cos
+static inline void _small_angle_q_from_gyro(double* xyz, double* q)
 {
-
-	// // full method, not small angle approximation
-	// double tmp;
-	// tmp=xyz[0] * 0.5;
-	// double cosX = cos(tmp);
-	// double sinX = sin(tmp);
-	// tmp=xyz[1] * 0.5;
-	// double cosY = cos(tmp);
-	// double sinY = sin(tmp);
-	// tmp=xyz[2] * 0.5;
-	// double cosZ = cos(tmp);
-	// double sinZ = sin(tmp);
-
-	// q[0] = cosX*cosY*cosZ + sinX*sinY*sinZ;
-	// q[1] = sinX*cosY*cosZ - cosX*sinY*sinZ;
-	// q[2] = cosX*sinY*cosZ + sinX*cosY*sinZ;
-	// q[3] = cosX*cosY*sinZ - sinX*sinY*cosZ;
-
-
-
 	// small angle approximation
 	double sinX = xyz[0] * 0.5;
 	double sinY = xyz[1] * 0.5;
@@ -646,24 +626,14 @@ static void _small_angle_q_from_gyro(double* xyz, double* q)
 	q[2] = sinY + sinX*sinZ;
 	q[3] = sinZ - sinX*sinY;
 
-
-	rc_quaternion_normalize_array(q);
+	// no need to normalize here, we are only going to be doing quaterion
+	// multiplication, not rotating vectors
 	return;
 }
 
-static void _reset_quaternion(double* q)
-{
-	q[0] = 1.0;
-	q[1] = 0.0;
-	q[2] = 0.0;
-	q[3] = 0.0;
-}
 
-/*
-TODO benchmark against
-int rc_quaternion_multiply_array(double a[4], double b[4], double c[4])
-*/
-static void _quaternion_left_multiply_inplace(double* a, double* b)
+// This is faster than rc_quaternion_multiply_array since it's inlined
+static inline void _quaternion_left_multiply_inplace(double* a, double* b)
 {
 	double tmp[4];
 	tmp[0] = b[0];
@@ -675,22 +645,10 @@ static void _quaternion_left_multiply_inplace(double* a, double* b)
 	b[1] = (tmp[0] * a[1]) + (tmp[1] * a[0]) + (tmp[2] * a[3]) - (tmp[3] * a[2]);
 	b[2] = (tmp[0] * a[2]) + (tmp[2] * a[0]) + (tmp[3] * a[1]) - (tmp[1] * a[3]);
 	b[3] = (tmp[0] * a[3]) + (tmp[3] * a[0]) + (tmp[1] * a[2]) - (tmp[2] * a[1]);
+	return;
 }
 
 
-static void _quaternion_right_multiply_inplace(double* a, double* b)
-{
-	double tmp[4];
-	tmp[0] = a[0];
-	tmp[1] = a[1];
-	tmp[2] = a[2];
-	tmp[3] = a[3];
-
-	a[0] = (b[0] * tmp[0]) - (b[1] * tmp[1]) - (b[2] * tmp[2]) - (b[3] * tmp[3]);
-	a[1] = (b[0] * tmp[1]) + (b[1] * tmp[0]) + (b[2] * tmp[3]) - (b[3] * tmp[2]);
-	a[2] = (b[0] * tmp[2]) + (b[2] * tmp[0]) + (b[3] * tmp[1]) - (b[1] * tmp[3]);
-	a[3] = (b[0] * tmp[3]) + (b[3] * tmp[0]) + (b[1] * tmp[2]) - (b[2] * tmp[1]);
-}
 
 
 
@@ -731,10 +689,8 @@ int rc_timed3_ringbuf_integrate_gyro_3d(rc_timed3_ringbuf_t* buf, \
 
 	//printf("pos_start: %4d pos_end: %4d\n", pos_start, pos_end);
 
-	// rc_matrix_t tmp = RC_MATRIX_INITIALIZER;
-	// rc_matrix_alloc(&tmp, 3, 3);
 	double q[4] = {1,0,0,0};
-	double qtmp[4];
+	double qnew[4];
 	int64_t t1, t2;
 	double x1[3], x2[3];
 
@@ -770,17 +726,16 @@ int rc_timed3_ringbuf_integrate_gyro_3d(rc_timed3_ringbuf_t* buf, \
 		d[1] = (x1[1]+x2[1]) * dt_s_over_two;
 		d[2] = (x1[2]+x2[2]) * dt_s_over_two;
 
-		// move final rotation
-		// rc_rotation_matrix_from_tait_bryan(dx, dy, dz, &tmp);
-		// rc_matrix_right_multiply_inplace(out, tmp);
-		_small_angle_q_from_gyro(d, qtmp);
-		_quaternion_left_multiply_inplace(qtmp, q);
+		// inlined functions
+		_small_angle_q_from_gyro(d, qnew);
+		_quaternion_left_multiply_inplace(qnew, q);
 
 		// save x2/t2 for next step
 		t1 = t2;
 		memcpy(x1,x2,3*sizeof(double));
 	}
 
+	// output final rotation matrix for that period
 	RC_VECTOR_ON_STACK(v, 4);
 	v.d[0] = q[0];
 	v.d[1] = -q[1];
@@ -789,6 +744,6 @@ int rc_timed3_ringbuf_integrate_gyro_3d(rc_timed3_ringbuf_t* buf, \
 	rc_quaternion_to_rotation_matrix(v, out);
 
 	pthread_mutex_unlock(&buf->mutex);
-	//rc_matrix_free(&tmp);
+
 	return 0;
 }

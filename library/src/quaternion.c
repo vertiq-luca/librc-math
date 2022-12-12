@@ -251,7 +251,6 @@ int rc_quaternion_imaginary_part(rc_vector_t q, rc_vector_t* img)
 
 int rc_quaternion_multiply(rc_vector_t a, rc_vector_t b, rc_vector_t* c)
 {
-    rc_matrix_t tmp = RC_MATRIX_INITIALIZER;
     // sanity checks
     if(unlikely(!a.initialized || !b.initialized)){
         fprintf(stderr, "ERROR in rc_quaternion_multiply, vector uninitialized\n");
@@ -261,70 +260,67 @@ int rc_quaternion_multiply(rc_vector_t a, rc_vector_t b, rc_vector_t* c)
         fprintf(stderr, "ERROR in rc_quaternion_multiply, expected vector of length 4\n");
         return -1;
     }
-    if(unlikely(rc_matrix_alloc(&tmp,4,4))){
-        fprintf(stderr, "ERROR in rc_quaternion_multiply, failed to alloc matrix\n");
+    if(unlikely(rc_vector_alloc(c,4))){
+        fprintf(stderr, "ERROR in rc_quaternion_multiply, failed to alloc output vector\n");
         return -1;
     }
-    // construct tmp matrix
-    tmp.d[0][0] =  a.d[0];
-    tmp.d[0][1] = -a.d[1];
-    tmp.d[0][2] = -a.d[2];
-    tmp.d[0][3] = -a.d[3];
-    tmp.d[1][0] =  a.d[1];
-    tmp.d[1][1] =  a.d[0];
-    tmp.d[1][2] = -a.d[3];
-    tmp.d[1][3] =  a.d[2];
-    tmp.d[2][0] =  a.d[2];
-    tmp.d[2][1] =  a.d[3];
-    tmp.d[2][2] =  a.d[0];
-    tmp.d[2][3] = -a.d[1];
-    tmp.d[3][0] =  a.d[3];
-    tmp.d[3][1] = -a.d[2];
-    tmp.d[3][2] =  a.d[1];
-    tmp.d[3][3] =  a.d[0];
-    // multiply
-    if(unlikely(rc_matrix_times_col_vec(tmp,b,c))){
-        fprintf(stderr, "ERROR in rc_quaternion_multiply, failed to multiply\n");
-        rc_matrix_free(&tmp);
-        return -1;
-    }
-    rc_matrix_free(&tmp);
-    return 0;
+
+    return rc_quaternion_multiply_array(a.d, b.d, c->d);
 }
 
 
 int rc_quaternion_multiply_array(double a[4], double b[4], double c[4])
 {
     if(unlikely(a==NULL||b==NULL||c==NULL)){
-        fprintf(stderr,"ERROR: in rc_quaternion_multiply_array, received NULL pointer\n");
+        fprintf(stderr,"ERROR: in %s, received NULL pointer\n", __FUNCTION__);
         return -1;
     }
 
-    int i,j;
-    double tmp[4][4];
-    // construct tmp matrix
-    tmp[0][0] =  a[0];
-    tmp[0][1] = -a[1];
-    tmp[0][2] = -a[2];
-    tmp[0][3] = -a[3];
-    tmp[1][0] =  a[1];
-    tmp[1][1] =  a[0];
-    tmp[1][2] = -a[3];
-    tmp[1][3] =  a[2];
-    tmp[2][0] =  a[2];
-    tmp[2][1] =  a[3];
-    tmp[2][2] =  a[0];
-    tmp[2][3] = -a[1];
-    tmp[3][0] =  a[3];
-    tmp[3][1] = -a[2];
-    tmp[3][2] =  a[1];
-    tmp[3][3] =  a[0];
-    // multiply
-    for(i=0;i<4;i++){
-        c[i]=0.0;
-        for(j=0;j<4;j++) c[i]+=tmp[i][j]*b[j];
-    }
+    c[0] = (b[0] * a[0]) - (b[1] * a[1]) - (b[2] * a[2]) - (b[3] * a[3]);
+    c[1] = (b[0] * a[1]) + (b[1] * a[0]) + (b[2] * a[3]) - (b[3] * a[2]);
+    c[2] = (b[0] * a[2]) + (b[2] * a[0]) + (b[3] * a[1]) - (b[1] * a[3]);
+    c[3] = (b[0] * a[3]) + (b[3] * a[0]) + (b[1] * a[2]) - (b[2] * a[1]);
+
     return 0;
+}
+
+
+int rc_quaternion_left_multiply_inplace_array(double a[4], double b[4])
+{
+    if(unlikely(a==NULL||b==NULL)){
+        fprintf(stderr,"ERROR: in %s, received NULL pointer\n", __FUNCTION__);
+        return -1;
+    }
+
+    double tmp[4];
+    tmp[0] = b[0];
+    tmp[1] = b[1];
+    tmp[2] = b[2];
+    tmp[3] = b[3];
+
+    b[0] = (tmp[0] * a[0]) - (tmp[1] * a[1]) - (tmp[2] * a[2]) - (tmp[3] * a[3]);
+    b[1] = (tmp[0] * a[1]) + (tmp[1] * a[0]) + (tmp[2] * a[3]) - (tmp[3] * a[2]);
+    b[2] = (tmp[0] * a[2]) + (tmp[2] * a[0]) + (tmp[3] * a[1]) - (tmp[1] * a[3]);
+    b[3] = (tmp[0] * a[3]) + (tmp[3] * a[0]) + (tmp[1] * a[2]) - (tmp[2] * a[1]);
+
+    return 0;
+}
+
+
+int rc_quaternion_right_multiply_inplace_array(double a[4], double b[4])
+{
+    if(unlikely(a==NULL||b==NULL)){
+        fprintf(stderr,"ERROR: in %s, received NULL pointer\n", __FUNCTION__);
+        return -1;
+    }
+
+    double tmp[4];
+    tmp[0] = a[0];
+    tmp[1] = a[1];
+    tmp[2] = a[2];
+    tmp[3] = a[3];
+
+    return rc_quaternion_multiply_array(tmp, b, a);
 }
 
 

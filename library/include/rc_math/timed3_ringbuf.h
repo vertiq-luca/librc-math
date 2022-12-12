@@ -243,6 +243,9 @@ int rc_timed3_ringbuf_std_dev(rc_timed3_ringbuf_t* buf, int n, double* out);
  *             the output matrix will be allocated or reallocated as necessary
  *             to hold the resulting 3x3 rotation matrix.
  *
+ *             Note, this uses small-angle approximation for speed, it's tested
+ *             with high-rate (1khz) gyro data.
+ *
  * @param[in]  buf      The buffer
  * @param[in]  t_start  start time nanoseconds
  * @param[in]  t_end    end time nanoseconds

@@ -213,6 +213,29 @@ int rc_quaternion_multiply(rc_vector_t a, rc_vector_t b, rc_vector_t* c);
  */
 int rc_quaternion_multiply_array(double a[4], double b[4], double c[4]);
 
+
+/**
+ * @brief      calculate b = a*b where a and b are quaternions
+ *
+ * @param      a     input
+ * @param      b     input and where the output is stored
+ *
+ * @return     Returns 0 on success or -1 on failure.
+ */
+int rc_quaternion_left_multiply_inplace_array(double a[4], double b[4]);
+
+
+/**
+ * @brief      calculate a = a*b where a and b are quaternions
+ *
+ * @param      a     input and where the output is stored
+ * @param      b     input
+ *
+ * @return     Returns 0 on success or -1 on failure.
+ */
+int rc_quaternion_right_multiply_inplace_array(double a[4], double b[4]);
+
+
 /**
  * @brief      Rotates the quaternion p by quaternion q with the operation
  * p'=qpq*
