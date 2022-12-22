@@ -1,3 +1,5 @@
+1.4.1
+     * optimize gyro 3d integrator
 1.4.0
     * timed_ringbuf and timed3_ringbuf modules
     * altitude filter module for optic flow
