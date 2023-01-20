@@ -1,5 +1,5 @@
 Package: librc-math
-Version: 1.4.1
+Version: 1.4.2
 Section: base
 Priority: optional
 Architecture: arm64
