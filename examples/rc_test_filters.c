@@ -50,15 +50,18 @@ static void __nanosleep(uint64_t ns){
 
 int main()
 {
-    rc_filter_t low_pass    = RC_FILTER_INITIALIZER;
+    rc_filter_t low_pass    = RC_FILTER_INITIALIZER; // structs that hold buffers and transfer function coeffs
     rc_filter_t high_pass   = RC_FILTER_INITIALIZER;
     rc_filter_t integrator  = RC_FILTER_INITIALIZER;
     rc_filter_t lp_butter   = RC_FILTER_INITIALIZER;
     rc_filter_t hp_butter   = RC_FILTER_INITIALIZER;
+    rc_filter_t notch   = RC_FILTER_INITIALIZER;
 
     const double dt = 1.0/SAMPLE_RATE;
-    double lp,hp,i,u,lpb,hpb;
-    int counter = 0;
+    double lp,hp,i,u,lpb,hpb,nch;
+    double time = 0;
+    int step = 0;
+    double sin_freq = M_PI * 2;
 
     printf("\nSample Rate: %dhz\n", SAMPLE_RATE);
     printf("Time Constant: %5.2f\n", TIME_CONSTANT);
@@ -68,6 +71,8 @@ int main()
     rc_filter_integrator(&integrator, dt);
     rc_filter_butterworth_lowpass(&lp_butter, 2, dt, 2.0*M_PI/TIME_CONSTANT);
     rc_filter_butterworth_highpass(&hp_butter, 2, dt, 2.0*M_PI/TIME_CONSTANT);
+    int worked = rc_filter_bandstop(&notch, 3 ,dt, 2 * M_PI, 3, 40);
+    printf("notch worked?: %i", worked);
 
     printf("\nLow Pass:\n");
     rc_filter_print(low_pass);
@@ -79,16 +84,22 @@ int main()
     rc_filter_print(lp_butter);
     printf("\nHigh Pass Butterworth:\n");
     rc_filter_print(hp_butter);
+    printf("\nNotch:\n");
+    rc_filter_print(notch);
     printf("\n\n");
 
     // print header
+    printf("   time   |");
+    printf("   step   |");
     printf("  input u |");
+    printf("   notch  |");
     printf("  lowpass |");
     printf(" highpass |");
     printf("complement|");
     printf("integrator|");
     printf(" lp_butter|");
     printf("hp_butter |");
+    
     printf("\n");
 
     // set signal handler so the loop can exit cleanly
@@ -107,24 +118,66 @@ int main()
         i  = rc_filter_march(&integrator, u);
         lpb = rc_filter_march(&lp_butter, u);
         hpb = rc_filter_march(&hp_butter, u);
+        nch = rc_filter_march(&notch, u);
 
         printf("\r");
+        printf("%8.3f  |", time);
+        printf("     %i    |", step);
         printf("%8.3f  |", u);
+        printf("%8.3f  |", nch);
         printf("%8.3f  |", lp);
         printf("%8.3f  |", hp);
         printf("%8.3f  |", lp+hp);
         printf("%8.3f  |", i);
         printf("%8.3f  |", lpb);
         printf("%8.3f  |", hpb);
+        
         fflush(stdout);
 
         // toggle u between 0 and 1 every 10 seconds
-        counter++;
-        if(counter >= SAMPLE_RATE*10){
-            counter = 0.0;
-            if(u>0.0) u = 0.0;
-            else u = 1.0;
+        time += dt;
+        u = sin(time * sin_freq);
+        if ((int) time % 20 >= 15)
+        {
+            step = 3;
+        } else if ((int) time % 20 >= 10)
+        {
+            step = 2;
+        } else if ((int) time % 20 >= 5)
+        {
+            step = 1;
+        } else
+        {
+            step = 0;
         }
+
+
+        switch (step)
+        {
+        case 0:
+            sin_freq = 2 * M_PI;
+            update_stop_wc(&notch, 2 * M_PI, 3, 40);
+            break;
+        case 1:
+            sin_freq = M_PI;
+            update_stop_wc(&notch, 2 * M_PI, 3, 40);
+            break;
+        case 2:
+            sin_freq = M_PI;
+            update_stop_wc(&notch, M_PI, 3, 40);
+            break;
+        case 3:
+            sin_freq = 2 * M_PI;
+            update_stop_wc(&notch, M_PI, 3, 40);
+            break;
+        default:
+            break;
+        }
+        // if(counter >= SAMPLE_RATE*10){
+        //     counter = 0.0;
+        //     if(u>0.0) u = 0.0;
+        //     else u = 1.0;
+        // }
 
         // sleep enough for a rough timed loop
         __nanosleep(1000000000/SAMPLE_RATE);
