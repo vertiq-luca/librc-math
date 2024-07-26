@@ -682,6 +682,91 @@ int rc_filter_butterworth_highpass(rc_filter_t* f, int order, double dt, double 
     return 0;
 }
 
+int rc_filter_bandstop(rc_filter_t* f, int order, double dt, double wc, double bw, double at)
+{
+    int ret_val = 0;
+    rc_vector_t num = RC_VECTOR_INITIALIZER;
+    rc_vector_t den = RC_VECTOR_INITIALIZER;
+    rc_vector_alloc(&num, 3);
+	rc_vector_alloc(&den, 3);
+    double A;
+	double Q;
+	A = pow(10, -at/40.0);
+	// from ardupilot
+	if (wc > 0.5 * bw) {
+        const double octaves = log2(wc / (wc - bw / 2.0)) * 2.0;
+        Q = sqrt(pow(2, octaves)) / (pow(2, octaves) - 1.0);
+    } else {
+        Q = 0.0;
+		ret_val = -1;
+    }
+    if (wc > 0. && (wc < M_PI / dt) && (Q > 0.0)) {
+        double omega = wc * dt;
+        double alpha = sin(omega) / (2 * Q);
+        num.d[0] =  1.0 + alpha * A * A;
+        num.d[1] = -2.0 * cos(omega);
+        num.d[2] =  1.0 - alpha * A * A;
+        den.d[1] =  num.d[1];
+        den.d[2] =  1.0 - alpha;
+
+        const double a0_inv =  1.0/(1.0 + alpha);
+
+        // Pre-multiply to save runtime calc
+        num.d[0] *= a0_inv;
+        num.d[1] *= a0_inv;
+        num.d[2] *= a0_inv;
+        den.d[1] *= a0_inv;
+        den.d[2] *= a0_inv;
+		den.d[0] = 1.0;
+        ret_val = rc_filter_alloc(f, num, den, dt);
+    } else
+    {
+        ret_val = -1;
+    }
+    rc_vector_free(&num);
+    rc_vector_free(&den);
+    return ret_val;
+}
+
+int update_stop_wc(rc_filter_t* f, double wc, double bw, double at)
+{
+    int ret_val = 0;
+    double A;
+	double Q;
+	A = pow(10, -at/40.0);
+	// from ardupilot
+	if (wc > 0.5 * bw) {
+        const double octaves = log2(wc / (wc - bw / 2.0)) * 2.0;
+        Q = sqrt(pow(2, octaves)) / (pow(2, octaves) - 1.0);
+    } else {
+        Q = 0.0;
+		ret_val = -1;
+    }
+    if (wc > 0. && (wc < M_PI / f->dt) && (Q > 0.0)) {
+        double omega = wc * f->dt;
+        double alpha = sin(omega) / (2 * Q);
+        f->num.d[0] =  1.0 + alpha * A * A;
+        f->num.d[1] = -2.0 * cos(omega);
+        f->num.d[2] =  1.0 - alpha * A * A;
+        f->den.d[1] =  f->num.d[1];
+        f->den.d[2] =  1.0 - alpha;
+
+        const double a0_inv =  1.0/(1.0 + alpha);
+
+        // Pre-multiply to save runtime calc
+        f->num.d[0] *= a0_inv;
+        f->num.d[1] *= a0_inv;
+        f->num.d[2] *= a0_inv;
+        f->den.d[1] *= a0_inv;
+        f->den.d[2] *= a0_inv;
+		f->den.d[0] = 1.0;
+		
+    } else
+    {
+        ret_val = -1;
+    }
+    return ret_val;
+}
 
 int rc_filter_moving_average(rc_filter_t* f, int samples, double dt)
 {

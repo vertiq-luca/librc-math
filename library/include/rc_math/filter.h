@@ -459,6 +459,25 @@ int rc_filter_butterworth_lowpass(rc_filter_t* f, int order, double dt, double w
 int rc_filter_butterworth_highpass(rc_filter_t* f, int order, double dt, double wc);
 
 /**
+ * @brief      Creates a band stop filter of specified order and
+ * notch frequency.
+ *
+ * Any existing memory allocated for f is freed safely to avoid memory leaks and
+ * new memory is allocated for the new filter.
+ *
+ * @param[out] f      Pointer to user's rc_filter_t struct
+ * @param[in]  order  The order (>=1) (ignored, will just be 2)
+ * @param[in]  dt     desired timestep of discrete filter in seconds
+ * @param[in]  wc     Cuttoff freqauency in rad/s
+ * @param[in]  bw     Bandwidth in rad/s
+ * @param[in]  at     attenuation in dB
+ * 
+ * @return     Returns 0 on success or -1 on failure.
+ */
+int rc_filter_bandstop(rc_filter_t* f, int order, double dt, double wc, double bw, double at);
+
+int update_stop_wc(rc_filter_t* f, double wc, double bw, double at);
+/**
  * @brief      Makes a FIR moving average filter that averages over specified
  * number of samples.
  *
